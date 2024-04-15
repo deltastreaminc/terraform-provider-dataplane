@@ -13,12 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.28.6
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6
 	github.com/containers/image/v5 v5.30.0
-	github.com/fluxcd/helm-controller/api v0.37.4
-	github.com/fluxcd/image-automation-controller/api v0.37.1
-	github.com/fluxcd/image-reflector-controller/api v0.31.2
 	github.com/fluxcd/kustomize-controller/api v1.2.2
-	github.com/fluxcd/notification-controller/api v1.2.4
-	github.com/fluxcd/source-controller/api v1.2.4
 	github.com/hashicorp/terraform-plugin-docs v0.18.0
 	github.com/hashicorp/terraform-plugin-framework v1.7.0
 	github.com/hashicorp/terraform-plugin-go v0.22.2
@@ -26,7 +21,6 @@ require (
 	github.com/sethvargo/go-retry v0.2.4
 	helm.sh/helm/v3 v3.14.4
 	k8s.io/api v0.29.3
-	k8s.io/apiextensions-apiserver v0.29.2
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v0.29.3
 	sigs.k8s.io/controller-runtime v0.17.3
@@ -90,7 +84,6 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fluxcd/pkg/apis/acl v0.1.0 // indirect
 	github.com/fluxcd/pkg/apis/kustomize v1.3.0 // indirect
 	github.com/fluxcd/pkg/apis/meta v1.3.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -242,6 +235,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/apiextensions-apiserver v0.29.2 // indirect
 	k8s.io/apiserver v0.29.2 // indirect
 	k8s.io/cli-runtime v0.29.0 // indirect
 	k8s.io/component-base v0.29.2 // indirect
