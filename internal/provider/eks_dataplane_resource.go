@@ -58,7 +58,7 @@ func (d *EKSDataplaneResource) Schema(ctx context.Context, req resource.SchemaRe
 					},
 					"ds_account_id": schema.StringAttribute{
 						Description: "The account ID provided by DeltaStream.",
-						Optional:    true,
+						Required:    true,
 					},
 
 					"account_id": schema.StringAttribute{

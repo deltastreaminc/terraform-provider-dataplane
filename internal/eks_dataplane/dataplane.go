@@ -98,13 +98,6 @@ func (d *EKSDataplane) ClusterConfigurationData(ctx context.Context) (ClusterCon
 	if cc.Stack.IsNull() || cc.Stack.IsUnknown() {
 		cc.Stack = basetypes.NewStringValue("prod")
 	}
-	if cc.DsAccountId.IsNull() || cc.DsAccountId.IsUnknown() {
-		if cc.Stack.ValueString() == "prod" {
-			cc.DsAccountId = basetypes.NewStringValue("145624980286")
-		} else {
-			cc.DsAccountId = basetypes.NewStringValue("792739327446")
-		}
-	}
 
 	return cc, diag
 }
