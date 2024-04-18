@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"text/template"
 
@@ -25,12 +24,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"sigs.k8s.io/yaml"
 )
@@ -169,10 +168,6 @@ func applyManifests(ctx context.Context, kubeClient client.Client, manifestYamls
 	for _, manifestYaml := range manifestYamls {
 		u := &unstructured.Unstructured{}
 
-		f, _ := os.OpenFile("/tmp/x.yaml", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-		f.WriteString(manifestYaml)
-		f.Close()
-
 		if err := yaml.Unmarshal([]byte(manifestYaml), u); err != nil {
 			d.AddError("Failed to unmarshal manifest", err.Error())
 			return
@@ -182,11 +177,14 @@ func applyManifests(ctx context.Context, kubeClient client.Client, manifestYamls
 			"kind": u.GetKind(),
 			"name": u.GetName(),
 		})
-		if _, err := controllerutil.CreateOrUpdate(ctx, kubeClient, u, func() error {
-			return nil
-		}); err != nil {
-			d.AddError("Failed to apply manifest", err.Error())
-			return
+		if err := kubeClient.Update(ctx, u); err != nil {
+			if k8serrors.IsNotFound(err) {
+				if err := kubeClient.Create(ctx, u); err != nil {
+					d.AddError("Failed to create manifest", err.Error())
+					return
+				}
+				continue
+			}
 		}
 	}
 	return
