@@ -27,6 +27,10 @@ type DeltaStreamDataplaneProvider struct {
 type DeltaStreamDataplaneProviderModel struct {
 }
 
+type DeltaStreamDataplaneResourceData struct {
+	Version string
+}
+
 func (p *DeltaStreamDataplaneProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "deltastream-dataplane"
 	resp.Version = p.version
@@ -46,11 +50,13 @@ func (p *DeltaStreamDataplaneProvider) Configure(ctx context.Context, req provid
 		return
 	}
 
-	resp.ResourceData = nil
+	resp.ResourceData = &DeltaStreamDataplaneResourceData{Version: p.version}
 }
 
 func (p *DeltaStreamDataplaneProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{}
+	return []func() resource.Resource{
+		NewEKSDataplaneResource,
+	}
 }
 
 func (p *DeltaStreamDataplaneProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
