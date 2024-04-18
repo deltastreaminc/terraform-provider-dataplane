@@ -21,7 +21,6 @@ func GetAwsConfig(ctx context.Context, dp EKSDataplane) (cfg aws.Config, d diag.
 	}
 
 	cfgOpts := config.WithClientLogMode(aws.LogDeprecatedUsage)
-	// cfgOpts = config.WithClientLogMode(aws.LogRequestWithBody | aws.LogResponse)
 	cfg, err := config.LoadDefaultConfig(ctx, cfgOpts)
 	if err != nil {
 		d.AddError("Failed to load AWS SDK config", err.Error())
