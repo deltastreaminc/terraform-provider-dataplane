@@ -53,7 +53,11 @@ func CopyImages(ctx context.Context, cfg aws.Config, dp EKSDataplane) (d diag.Di
 	}
 	defer getObjectOut.Body.Close()
 
-	imageList := []string{}
+	imageList := struct {
+		Images            []string `json:"images"`
+		ExecEngineVersion string   `json:"execEngineVersion"`
+	}{}
+
 	b, err := io.ReadAll(getObjectOut.Body)
 	if err != nil {
 		d.AddError("error reading image list", err.Error())
@@ -85,13 +89,7 @@ func CopyImages(ctx context.Context, cfg aws.Config, dp EKSDataplane) (d diag.Di
 		},
 	}
 
-	execEngineUri := ""
-	for _, image := range imageList {
-		if strings.HasPrefix(image, "deltastreaminc/query-service:") {
-			version := strings.TrimPrefix(image, "deltastreaminc/query-service:")
-			execEngineUri = fmt.Sprintf("release/io/deltastream/execution-engine/%s/execution-engine-%s.jar", version, version)
-		}
-
+	for _, image := range imageList.Images {
 		sourceImage := fmt.Sprintf("//%s.dkr.ecr.%s.amazonaws.com/%s", clusterConfig.DsAccountId.ValueString(), cfg.Region, image)
 		destImage := fmt.Sprintf("//%s.dkr.ecr.%s.amazonaws.com/%s", clusterConfig.AccountId.ValueString(), cfg.Region, image)
 		err = copyImage(ctx, imageCredContext, sourceImage, destImage)
@@ -101,6 +99,7 @@ func CopyImages(ctx context.Context, cfg aws.Config, dp EKSDataplane) (d diag.Di
 		}
 	}
 
+	execEngineUri := fmt.Sprintf("release/io/deltastream/execution-engine/%s/execution-engine-%s.jar", imageList.ExecEngineVersion, imageList.ExecEngineVersion)
 	// Copy the execution engine jar
 	tflog.Debug(ctx, "downloading execution engine jar "+bucketName+" "+execEngineUri)
 	getObjectOut, err = s3client.GetObject(ctx, &s3.GetObjectInput{
