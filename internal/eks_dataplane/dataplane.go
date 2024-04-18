@@ -6,7 +6,9 @@ package eksdataplane
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
@@ -26,6 +28,14 @@ type Status struct {
 	ProviderVersion basetypes.StringValue `tfsdk:"provider_version"`
 	ProductVersion  basetypes.StringValue `tfsdk:"product_version"`
 	UpdatedAt       basetypes.StringValue `tfsdk:"updated_at"`
+}
+
+func (m Status) AttributeTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"provider_version": types.StringType,
+		"product_version":  types.StringType,
+		"updated_at":       types.StringType,
+	}
 }
 
 type ClusterConfiguration struct {

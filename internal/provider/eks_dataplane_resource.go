@@ -9,7 +9,6 @@ import (
 	"time"
 
 	eksdataplane "github.com/deltastreaminc/terraform-provider-deltastream-dataplane/internal/eks_dataplane"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -264,10 +263,6 @@ func (d *EKSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &dp)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
 	cfg, diags := eksdataplane.GetAwsConfig(ctx, dp)
 	resp.Diagnostics.Append(diags...)
@@ -317,11 +312,18 @@ func (d *EKSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("status"), &eksdataplane.Status{
+	status := &eksdataplane.Status{
 		ProviderVersion: basetypes.NewStringValue(d.infraVersion),
 		ProductVersion:  clusterConfig.ProductVersion,
 		UpdatedAt:       basetypes.NewStringValue(time.Now().Format(time.RFC3339)),
-	})...)
+	}
+	dp.Status, diags = basetypes.NewObjectValueFrom(ctx, status.AttributeTypes(), status)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -355,10 +357,6 @@ func (d *EKSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &newDp)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -399,11 +397,18 @@ func (d *EKSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("status"), &eksdataplane.Status{
+	status := &eksdataplane.Status{
 		ProviderVersion: basetypes.NewStringValue(d.infraVersion),
 		ProductVersion:  clusterConfig.ProductVersion,
 		UpdatedAt:       basetypes.NewStringValue(time.Now().Format(time.RFC3339)),
-	})...)
+	}
+	newDp.Status, diags = basetypes.NewObjectValueFrom(ctx, status.AttributeTypes(), status)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
