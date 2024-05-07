@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -65,11 +66,6 @@ func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp EKSDataplane, k
 			"infraID":                        []byte(config.InfraId.ValueString()),
 			"infraName":                      []byte("dp-" + config.InfraId.ValueString()),
 			"infraIndex":                     []byte(config.InfraIndex.ValueString()),
-			"infraRegion":                    []byte(cfg.Region),
-			"infraDrRegion":                  []byte(cfg.Region),
-			"infraEnvironment":               []byte(config.Stack.ValueString()),
-			"infraCloud":                     []byte("aws"),
-			"infraVersion":                   []byte(infraVersion),
 			"resourceID":                     []byte(config.ResourceId.ValueString()),
 			"clusterName":                    []byte(*cluster.Name),
 			"vpcId":                          []byte(config.VpcId.ValueString()),
@@ -93,26 +89,45 @@ func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp EKSDataplane, k
 			"thanosStoreBucketWebRoleARN":    []byte(config.ThanosStoreBucketRoleArn.ValueString()),
 			"thanosSideCarRoleARN":           []byte(config.ThanosSidecarRoleArn.ValueString()),
 			"deadmanAlertRoleARN":            []byte(config.DeadmanAlertRoleArn.ValueString()),
-			"karpenterRoleARN":               []byte(config.KarpenterRoleArn.ValueString()),
+			"karpenterRoleName":              []byte(config.KarpenterRoleName.ValueString()),
 			"karpenterIrsaARN":               []byte(config.KarpenterIrsaRoleArn.ValueString()),
 			"storeProxyRoleARN":              []byte(config.StoreProxyRoleArn.ValueString()),
-			"datagenRoleARN":                 []byte(""),
-			"defaultInstanceProfile":         []byte(config.DefaultInstanceProfile.ValueString()),
 			"interruptionQueueName":          []byte(config.InterruptionQueueName.ValueString()),
 			"cw2lokiRoleARN":                 []byte(config.Cw2LokiRoleArn.ValueString()),
-			"nthRoleARN":                     []byte(""),
-			"nthCordonOnly":                  []byte("true"),
 			"dpManagerCPAssumeRoleARN":       []byte(config.DpManagerCpRoleArn.ValueString()),
 			"dpManagerRoleARN":               []byte(config.DpManagerRoleArn.ValueString()),
-			"dpOperatorUserAwsSecret":        []byte(config.DpOperatorUserAwsSecret.ValueString()),
 			"deltastreamCrossAccountRoleARN": []byte(config.DsCrossAccountRoleArn.ValueString()),
-			"apiHostname":                    []byte(config.ApiHostname.ValueString()),
-			"grafanaHostname":                []byte(config.GrafanaHostname.ValueString()),
 			"cpPrometheusPushProxyUrl":       []byte(config.MetricsPushProxyUrl.ValueString()),
 			"cpPrometheusPushProxyHost":      []byte(promPushProxyUri.Hostname()),
 			"cpPrometheusPushProxyPort":      []byte(`"443"`),
-			"grafanaPromPushProxVpcHostname": []byte(""),
-			"grafanaVpcHostname":             []byte(config.GrafanaHostname.ValueString()),
+			"grafanaVpcHostname":             []byte(config.O11yHostname.ValueString()),
+			"apiServerDefaultIngressGateway": []byte("istio-svcs-gateway"),
+			"ciliumPolicyAuditMode":          []byte("false"),  //hardcode
+			"ciliumPolicyEnforcementMode":    []byte("always"), //hardcode
+
+			"dpOperatorUserAwsSecret": []byte(ptr.Deref(config.WorkloadCredentialsSecret.ValueStringPointer(), "")),
+			"workloadCredsMode":       []byte(config.WorkloadCredentialsMode.ValueString()),
+
+			"grafanaIngressMode": []byte("default"), // deprecated
+			"istioIngressMode":   []byte("default"), // deprecated
+
+			"grafanaHostname":       []byte(config.O11yHostname.ValueString()),
+			"o11yEndpointSubnet":    []byte(config.O11ySubnetMode.ValueString()),
+			"o11yTlsTermination":    []byte(config.O11yTlsMode.ValueString()),
+			"o11yNlbSslCertificate": []byte(ptr.Deref(config.O11yTlsCertificaterArn.ValueStringPointer(), "")),
+
+			"apiHostname":              []byte(config.ApiHostname.ValueString()),
+			"apiEndpointSubnet":        []byte(config.ApiSubnetMode.ValueString()),
+			"apiTlsTermination":        []byte(config.ApiTlsMode.ValueString()),
+			"clusterNlbSslCertificate": []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
+
+			"grafanaPromPushProxVpcHostname": []byte(config.MetricsPushProxyUrl.ValueString()),
+
+			"prometheusLocalTSDBRetention": []byte("5d"),
+			"prometheusMemoryLimit":        []byte("4Gi"),
+			"prometheusPVCStorageSize":     []byte("300Gi"),
+
+			"vpcDnsIP": []byte(config.VpcDnsIP.ValueString()),
 		}
 		return nil
 	})

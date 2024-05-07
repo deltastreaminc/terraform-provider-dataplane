@@ -50,13 +50,14 @@ type ClusterConfiguration struct {
 
 	VpcId             basetypes.StringValue `tfsdk:"vpc_id"`
 	VpcCidr           basetypes.StringValue `tfsdk:"vpc_cidr"`
+	VpcDnsIP          basetypes.StringValue `tfsdk:"vpc_dns_ip"`
 	VpcPrivateSubnets basetypes.ListValue   `tfsdk:"vpc_private_subnets"`
 
-	ClusterIndex        basetypes.Int64Value  `tfsdk:"cluster_index"`
-	SubnetIds           basetypes.ListValue   `tfsdk:"subnet_ids"`
-	ApiHostname         basetypes.StringValue `tfsdk:"api_hostname"`
-	GrafanaHostname     basetypes.StringValue `tfsdk:"grafana_hostname"`
-	MetricsPushProxyUrl basetypes.StringValue `tfsdk:"metrics_push_proxy_url"`
+	ClusterIndex           basetypes.Int64Value  `tfsdk:"cluster_index"`
+	SubnetIds              basetypes.ListValue   `tfsdk:"subnet_ids"`
+	MetricsPushProxyUrl    basetypes.StringValue `tfsdk:"metrics_push_proxy_url"`
+	ProductArtifactsBucket basetypes.StringValue `tfsdk:"product_artifacts_bucket"`
+	InterruptionQueueName  basetypes.StringValue `tfsdk:"interruption_queue_name"`
 
 	AwsSecretsManagerRoRoleARN  basetypes.StringValue `tfsdk:"aws_secrets_manager_ro_role_arn"`
 	InfraManagerRoleArn         basetypes.StringValue `tfsdk:"infra_manager_role_arn"`
@@ -69,7 +70,7 @@ type ClusterConfiguration struct {
 	ThanosStoreBucketRoleArn    basetypes.StringValue `tfsdk:"thanos_store_bucket_role_arn"`
 	ThanosSidecarRoleArn        basetypes.StringValue `tfsdk:"thanos_sidecar_role_arn"`
 	DeadmanAlertRoleArn         basetypes.StringValue `tfsdk:"deadman_alert_role_arn"`
-	KarpenterRoleArn            basetypes.StringValue `tfsdk:"karpenter_role_arn"`
+	KarpenterRoleName           basetypes.StringValue `tfsdk:"karpenter_role_name"`
 	KarpenterIrsaRoleArn        basetypes.StringValue `tfsdk:"karpenter_irsa_role_arn"`
 	StoreProxyRoleArn           basetypes.StringValue `tfsdk:"store_proxy_role_arn"`
 	Cw2LokiRoleArn              basetypes.StringValue `tfsdk:"cw2loki_role_arn"`
@@ -78,11 +79,19 @@ type ClusterConfiguration struct {
 	DpManagerCpRoleArn          basetypes.StringValue `tfsdk:"dp_manager_cp_role_arn"`
 	DpManagerRoleArn            basetypes.StringValue `tfsdk:"dp_manager_role_arn"`
 
-	DpOperatorUserAwsSecret basetypes.StringValue `tfsdk:"dp_operator_user_aws_secret"`
-	ProductArtifactsBucket  basetypes.StringValue `tfsdk:"product_artifacts_bucket"`
+	WorkloadCredentialsMode    basetypes.StringValue `tfsdk:"workload_credentials_mode"`
+	WorkloadCredentialsSecret  basetypes.StringValue `tfsdk:"workload_credentials_secret"`
+	WorkloadCredentialsRoleArn basetypes.StringValue `tfsdk:"workload_credentials_role_arn"`
 
-	DefaultInstanceProfile basetypes.StringValue `tfsdk:"default_instance_profile"`
-	InterruptionQueueName  basetypes.StringValue `tfsdk:"interruption_queue_name"`
+	O11yHostname           basetypes.StringValue `tfsdk:"o11y_hostname"`
+	O11ySubnetMode         basetypes.StringValue `tfsdk:"o11y_subnet_mode"`
+	O11yTlsMode            basetypes.StringValue `tfsdk:"o11y_tls_mode"`
+	O11yTlsCertificaterArn basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
+
+	ApiHostname           basetypes.StringValue `tfsdk:"api_hostname"`
+	ApiSubnetMode         basetypes.StringValue `tfsdk:"api_subnet_mode"`
+	ApiTlsMode            basetypes.StringValue `tfsdk:"api_tls_mode"`
+	ApiTlsCertificaterArn basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
 }
 
 func (d *EKSDataplane) AssumeRoleData(ctx context.Context) (AssumeRole, diag.Diagnostics) {

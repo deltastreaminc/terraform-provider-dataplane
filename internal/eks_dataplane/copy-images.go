@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
+	"github.com/alitto/pond"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -20,6 +22,7 @@ import (
 	"github.com/containers/image/v5/types"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/sethvargo/go-retry"
 	"sigs.k8s.io/yaml"
 )
 
@@ -89,15 +92,24 @@ func CopyImages(ctx context.Context, cfg aws.Config, dp EKSDataplane) (d diag.Di
 		},
 	}
 
+	pool := pond.New(15, 1000)
+	defer pool.StopAndWait()
+	group := pool.Group()
+
 	for _, image := range imageList.Images {
 		sourceImage := fmt.Sprintf("//%s.dkr.ecr.%s.amazonaws.com/%s", clusterConfig.DsAccountId.ValueString(), cfg.Region, image)
 		destImage := fmt.Sprintf("//%s.dkr.ecr.%s.amazonaws.com/%s", clusterConfig.AccountId.ValueString(), cfg.Region, image)
-		err = copyImage(ctx, imageCredContext, sourceImage, destImage)
-		if err != nil {
-			d.AddError("error copying image", err.Error())
-			return
-		}
+
+		group.Submit(func() {
+			err = copyImage(ctx, imageCredContext, sourceImage, destImage)
+			if err != nil {
+				d.AddError("error copying image", err.Error())
+				return
+			}
+		})
 	}
+
+	group.Wait()
 
 	execEngineUri := fmt.Sprintf("release/io/deltastream/execution-engine/%s/execution-engine-%s.jar", imageList.ExecEngineVersion, imageList.ExecEngineVersion)
 	// Copy the execution engine jar
@@ -137,11 +149,17 @@ func CopyImages(ctx context.Context, cfg aws.Config, dp EKSDataplane) (d diag.Di
 	return
 }
 
+type imgBlob struct {
+	copiedBytes float64
+	totalBytes  float64
+}
+
 func copyImage(ctx context.Context, credContext *types.SystemContext, sourceImage, destImage string) (err error) {
 	tflog.Debug(ctx, "copying image", map[string]any{
 		"source": sourceImage,
 		"dest":   destImage,
 	})
+
 	srcRef, err := docker.ParseReference(sourceImage)
 	if err != nil {
 		return fmt.Errorf("error parsing source image: %w", err)
@@ -159,10 +177,56 @@ func copyImage(ctx context.Context, credContext *types.SystemContext, sourceImag
 	}
 
 	b := bytes.NewBuffer(nil)
-	_, err = copy.Image(ctx, policyContext, destRef, srcRef, &copy.Options{
-		SourceCtx:      credContext,
-		DestinationCtx: credContext,
-		ReportWriter:   b,
+	reportCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	progressChan := make(chan types.ProgressProperties)
+
+	go func() {
+		blobs := map[string]imgBlob{}
+		for {
+			select {
+			case <-reportCtx.Done():
+				return
+			case p := <-progressChan:
+				switch p.Event {
+				case types.ProgressEventDone:
+					tflog.Info(ctx, fmt.Sprintf("%s: 100.0\n", destImage))
+				}
+
+				blobs[p.Artifact.Digest.String()] = imgBlob{
+					copiedBytes: float64(p.Offset),
+					totalBytes:  float64(p.Artifact.Size),
+				}
+
+				copiedBytes := float64(0)
+				totalBytes := float64(0)
+				for _, a := range blobs {
+					copiedBytes += a.copiedBytes
+					totalBytes += a.totalBytes
+				}
+				if totalBytes == 0 {
+					continue
+				}
+				pct := 100.0 * (float32(copiedBytes) / float32(totalBytes))
+				tflog.Info(ctx, fmt.Sprintf("%s: %f\n", destImage, pct))
+			}
+		}
+	}()
+
+	retry.Do(ctx, retry.WithMaxRetries(20, retry.NewExponential(time.Second*5)), func(ctx context.Context) error {
+		_, err := copy.Image(ctx, policyContext, destRef, srcRef, &copy.Options{
+			SourceCtx:          credContext,
+			DestinationCtx:     credContext,
+			ReportWriter:       b,
+			Progress:           progressChan,
+			ProgressInterval:   time.Second * 10,
+			PreserveDigests:    true,
+			ImageListSelection: copy.CopyAllImages,
+		})
+		if err != nil {
+			tflog.Error(ctx, err.Error())
+		}
+		return err
 	})
 	if err != nil {
 		return fmt.Errorf("error copying image: %w\n%s", err, b.String())

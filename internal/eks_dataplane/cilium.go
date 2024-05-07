@@ -35,6 +35,12 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeCli
 		return
 	}
 
+	config, diags := dp.ClusterConfigurationData(ctx)
+	d.Append(diags...)
+	if d.HasError() {
+		return
+	}
+
 	clusterName, diags := GetKubeClusterName(ctx, dp)
 	d.Append(diags...)
 	if d.HasError() {
@@ -48,7 +54,9 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeCli
 		return
 	}
 	if err = t.Execute(b, map[string]any{
-		"ClusterName": clusterName,
+		"ClusterName":     clusterName,
+		"EcrAwsAccountId": config.AccountId.ValueString(),
+		"Region":          cfg.Region,
 	}); err != nil {
 		d.AddError("error executing cilium values template", err.Error())
 		return

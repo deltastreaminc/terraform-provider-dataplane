@@ -6,11 +6,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	eksdataplane "github.com/deltastreaminc/terraform-provider-deltastream-dataplane/internal/eks_dataplane"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
@@ -95,94 +98,96 @@ func (d *EKSDataplaneResource) Schema(ctx context.Context, req resource.SchemaRe
 					"aws_secrets_manager_ro_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for reading secrets from AWS secrets manager.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"infra_manager_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing infra resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"vault_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for credential vault resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"vault_init_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for configuring credential vault.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"loki_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Loki resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"tempo_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Tempo resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"thanos_store_gateway_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Thanos storage gateway resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"thanos_store_compactor_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Thanos storage compactor resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"thanos_store_bucket_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Thanos store bucket resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"thanos_sidecar_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Thanos sidecar resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"deadman_alert_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing deadman alert resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
-					"karpenter_role_arn": schema.StringAttribute{
-						Description: "The ARN of the role to assume for managing Karpenter resources.",
+					"karpenter_role_name": schema.StringAttribute{
+						Description: "The name of the role to assume for managing Karpenter resources.",
 						Required:    true,
 					},
 					"karpenter_irsa_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing Karpenter IRSA resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"store_proxy_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume to facilitate connection to customer stores.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"cw2loki_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing CloudWatch-Loki resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"ds_cross_account_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role for provising trust when accessing customer provided resources.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"ecr_readonly_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for read-only access to ECR.",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"dp_manager_cp_role_arn": schema.StringAttribute{
 						Description: "The ARN of the control plane role to assume for data plane to control plane communication (provided by DeltaStream)",
 						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"dp_manager_role_arn": schema.StringAttribute{
 						Description: "The ARN of the role to assume for managing dataplane resources.",
 						Required:    true,
-					},
-					"dp_operator_user_aws_secret": schema.StringAttribute{
-						Description: "The name of the secret containing credentials used for isolating workloads with temporary credentials vended via AWS STS.",
-						Required:    true,
-					},
-					"api_hostname": schema.StringAttribute{
-						Description: "The hostname of the dataplane API server.",
-						Required:    true,
-					},
-					"grafana_hostname": schema.StringAttribute{
-						Description: "The hostname of the Grafana server.",
-						Required:    true,
-					},
-					"default_instance_profile": schema.StringAttribute{
-						Description: "The default instance profile for the cluster.",
-						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
 					},
 					"interruption_queue_name": schema.StringAttribute{
 						Description: "The name of the SQS queue for handling interruption events.",
@@ -196,6 +201,11 @@ func (d *EKSDataplaneResource) Schema(ctx context.Context, req resource.SchemaRe
 						Description: "The VPC ID of the cluster.",
 						Required:    true,
 					},
+					"vpc_dns_ip": schema.StringAttribute{
+						Description: "The VPC DNS server IP address.",
+						Required:    true,
+						Validators:  []validator.String{},
+					},
 					"vpc_cidr": schema.StringAttribute{
 						Description: "The CIDR of the VPC.",
 						Required:    true,
@@ -208,6 +218,62 @@ func (d *EKSDataplaneResource) Schema(ctx context.Context, req resource.SchemaRe
 					"product_artifacts_bucket": schema.StringAttribute{
 						Description: "The S3 bucket for storing DeltaStream product artifacts.",
 						Required:    true,
+					},
+					"workload_credentials_mode": schema.StringAttribute{
+						Description: "The mode for managing workload credentials.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.OneOf("secret", "role")},
+					},
+					"workload_credentials_secret": schema.StringAttribute{
+						Description: "The name of the secret containing workload credentials if running in secret mode.",
+						Optional:    true,
+					},
+					"workload_credentials_role_arn": schema.StringAttribute{
+						Description: "The ARN of the role to assume for managing workload credentials if running in role iammode.",
+						Optional:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
+					},
+
+					"o11y_hostname": schema.StringAttribute{
+						Description: "The hostname of the observability endpoint.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
+					},
+					"o11y_subnet_mode": schema.StringAttribute{
+						Description: "The subnet mode for observability endpoint.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.OneOf("public", "private")},
+					},
+					"o11y_tls_mode": schema.StringAttribute{
+						Description: "The TLS/HTTPS mode for observability endpoint.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.OneOf("awscert", "acme", "disabled")},
+					},
+					"o11y_tls_certificate_arn": schema.StringAttribute{
+						Description: "The ARN of the TLS certificate for the observability endpoint.",
+						Optional:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					},
+
+					"api_hostname": schema.StringAttribute{
+						Description: "The hostname of the dataplane API endpoint.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
+					},
+					"api_subnet_mode": schema.StringAttribute{
+						Description: "The subnet mode for dataplane API endpoint.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.OneOf("public", "private")},
+					},
+					"api_tls_mode": schema.StringAttribute{
+						Description: "The TLS/HTTPS mode for dataplane API endpoint.",
+						Required:    true,
+						Validators:  []validator.String{stringvalidator.OneOf("awscert", "acme", "disabled")},
+					},
+					"api_tls_certificate_arn": schema.StringAttribute{
+						Description: "The ARN of the TLS certificate for the dataplane API endpoint.",
+						Optional:    true,
+						Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
 					},
 				},
 			},
@@ -276,6 +342,12 @@ func (d *EKSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// copy images
+	resp.Diagnostics.Append(eksdataplane.CopyImages(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// remove aws-node
 	resp.Diagnostics.Append(eksdataplane.DeleteAwsNode(ctx, dp, kubeClient)...)
 	if resp.Diagnostics.HasError() {
@@ -290,12 +362,6 @@ func (d *EKSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 
 	// update cluster-config
 	resp.Diagnostics.Append(eksdataplane.UpdateClusterConfig(ctx, cfg, dp, kubeClient, d.infraVersion)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// copy images
-	resp.Diagnostics.Append(eksdataplane.CopyImages(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -367,6 +433,12 @@ func (d *EKSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
+	// copy images
+	resp.Diagnostics.Append(eksdataplane.CopyImages(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	kubeClient, diags := eksdataplane.GetKubeClient(ctx, cfg, newDp)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -375,12 +447,6 @@ func (d *EKSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// // update cluster-config
 	resp.Diagnostics.Append(eksdataplane.UpdateClusterConfig(ctx, cfg, newDp, kubeClient, d.infraVersion)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// copy images
-	resp.Diagnostics.Append(eksdataplane.CopyImages(ctx, cfg, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

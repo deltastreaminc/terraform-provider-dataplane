@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
@@ -23,6 +24,7 @@ import (
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/sethvargo/go-retry"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -173,18 +175,29 @@ func applyManifests(ctx context.Context, kubeClient client.Client, manifestYamls
 			return
 		}
 
-		tflog.Info(ctx, "Applying object", map[string]any{
-			"kind": u.GetKind(),
-			"name": u.GetName(),
-		})
-		if err := kubeClient.Update(ctx, u); err != nil {
+		existingObj := u.DeepCopy()
+		if err := kubeClient.Get(ctx, client.ObjectKeyFromObject(u), existingObj); err != nil {
 			if k8serrors.IsNotFound(err) {
 				if err := kubeClient.Create(ctx, u); err != nil {
-					d.AddError("Failed to create manifest", err.Error())
+					d.AddError("Failed to create object", err.Error())
 					return
 				}
 				continue
 			}
+			d.AddError("Failed to lookup object", err.Error())
+			return
+		}
+
+		u.SetResourceVersion(existingObj.GetResourceVersion())
+		tflog.Info(ctx, "updating object", map[string]any{
+			"obj": u,
+		})
+
+		if err := retry.Do(ctx, retry.WithMaxRetries(5, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+			return kubeClient.Update(ctx, u)
+		}); err != nil {
+			d.AddError("Failed to update object", err.Error())
+			return
 		}
 	}
 	return

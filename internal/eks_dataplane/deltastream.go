@@ -33,6 +33,7 @@ func InstallDeltaStream(ctx context.Context, cfg aws.Config, dp EKSDataplane, ku
 		return
 	}
 
+	tflog.Info(ctx, "deploying DeltaStream "+clusterConfig.ProductVersion.ValueString())
 	d.Append(renderAndApplyTemplate(ctx, kubeClient, "flux", fluxManifestTemplate, map[string]string{
 		"EksReaderRoleArn": clusterConfig.EcrReadonlyRoleArn.ValueString(),
 		"Region":           cfg.Region,

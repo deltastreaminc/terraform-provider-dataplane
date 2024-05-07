@@ -1,3 +1,5 @@
+image:
+  repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/cilium"
 cluster:
   id: 1
   name: {{ .ClusterName }}
@@ -24,6 +26,8 @@ cni:
   exclusive: false
 # egressMasqueradeInterfaces: eth0
 envoy:
+  image:
+    repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/cilium-envoy"
   enabled: true
   podSecurityContext:
     fsGroup: 65532
@@ -47,6 +51,8 @@ ipam:
   mode: eni
 hubble:
   relay:
+    image:
+      repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/hubble-relay"
     enabled: true
     extraVolumeMounts:
     - mountPath: /home/nonroot/.config
@@ -76,6 +82,8 @@ hubble:
       fsGroup: 1001
       runAsNonRoot: true
     frontend:
+      image:
+        repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/hubble-ui"
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -89,6 +97,8 @@ hubble:
         seccompProfile:
           type: RuntimeDefault
     backend:
+      image:
+        repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/hubble-ui-backend"
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:
@@ -102,7 +112,15 @@ hubble:
         seccompProfile:
           type: RuntimeDefault
 operator:
+  image:
+    repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/operator"
   replicas: 2
 policyEnforcementMode: default
 l7Proxy: true
 tunnelProtocol: ""
+certgen:
+  image:
+    repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/certgen"
+preflight:
+  image:
+    repository: "{{ .EcrAwsAccountId }}.dkr.ecr.{{ .Region }}.amazonaws.com/mirror/quay.io/cilium/cilium"
