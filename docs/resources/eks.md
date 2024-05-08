@@ -45,25 +45,28 @@ Optional:
 Required:
 
 - `account_id` (String) The account ID hosting the DeltaStream dataplane.
-- `api_hostname` (String) The hostname of the dataplane API server.
+- `api_hostname` (String) The hostname of the dataplane API endpoint.
+- `api_subnet_mode` (String) The subnet mode for dataplane API endpoint.
+- `api_tls_mode` (String) The TLS/HTTPS mode for dataplane API endpoint.
 - `aws_secrets_manager_ro_role_arn` (String) The ARN of the role to assume for reading secrets from AWS secrets manager.
 - `cw2loki_role_arn` (String) The ARN of the role to assume for managing CloudWatch-Loki resources.
 - `deadman_alert_role_arn` (String) The ARN of the role to assume for managing deadman alert resources.
-- `default_instance_profile` (String) The default instance profile for the cluster.
 - `dp_manager_cp_role_arn` (String) The ARN of the control plane role to assume for data plane to control plane communication (provided by DeltaStream)
 - `dp_manager_role_arn` (String) The ARN of the role to assume for managing dataplane resources.
-- `dp_operator_user_aws_secret` (String) The name of the secret containing credentials used for isolating workloads with temporary credentials vended via AWS STS.
+- `ds_account_id` (String) The account ID provided by DeltaStream.
 - `ds_cross_account_role_arn` (String) The ARN of the role for provising trust when accessing customer provided resources.
 - `ecr_readonly_role_arn` (String) The ARN of the role to assume for read-only access to ECR.
-- `grafana_hostname` (String) The hostname of the Grafana server.
 - `infra_id` (String) The infra ID of the DeltaStream dataplane (provided by DeltaStream).
 - `infra_index` (String) The infra index of the DeltaStream dataplane (provided by DeltaStream).
 - `infra_manager_role_arn` (String) The ARN of the role to assume for managing infra resources.
 - `interruption_queue_name` (String) The name of the SQS queue for handling interruption events.
 - `karpenter_irsa_role_arn` (String) The ARN of the role to assume for managing Karpenter IRSA resources.
-- `karpenter_role_arn` (String) The ARN of the role to assume for managing Karpenter resources.
+- `karpenter_role_name` (String) The name of the role to assume for managing Karpenter resources.
 - `loki_role_arn` (String) The ARN of the role to assume for managing Loki resources.
 - `metrics_push_proxy_url` (String) The URL of the metrics push proxy.
+- `o11y_hostname` (String) The hostname of the observability endpoint.
+- `o11y_subnet_mode` (String) The subnet mode for observability endpoint.
+- `o11y_tls_mode` (String) The TLS/HTTPS mode for observability endpoint.
 - `product_artifacts_bucket` (String) The S3 bucket for storing DeltaStream product artifacts.
 - `product_version` (String) The version of the DeltaStream product. (provided by DeltaStream)
 - `resource_id` (String) The resource ID of the DeltaStream dataplane (provided by DeltaStream).
@@ -77,14 +80,19 @@ Required:
 - `vault_init_role_arn` (String) The ARN of the role to assume for configuring credential vault.
 - `vault_role_arn` (String) The ARN of the role to assume for credential vault resources.
 - `vpc_cidr` (String) The CIDR of the VPC.
+- `vpc_dns_ip` (String) The VPC DNS server IP address.
 - `vpc_id` (String) The VPC ID of the cluster.
 - `vpc_private_subnets` (List of String) The private subnet IDs of the private links from dataplane VPC.
+- `workload_credentials_mode` (String) The mode for managing workload credentials.
 
 Optional:
 
+- `api_tls_certificate_arn` (String) The ARN of the TLS certificate for the dataplane API endpoint.
 - `cluster_index` (Number) The index of the cluster (provided by DeltaStream).
-- `ds_account_id` (String) The account ID provided by DeltaStream.
+- `o11y_tls_certificate_arn` (String) The ARN of the TLS certificate for the observability endpoint.
 - `stack` (String) The type of DeltaStream dataplane (default: prod).
+- `workload_credentials_role_arn` (String) The ARN of the role to assume for managing workload credentials if running in role iammode.
+- `workload_credentials_secret` (String) The name of the secret containing workload credentials if running in secret mode.
 
 
 <a id="nestedatt--status"></a>
