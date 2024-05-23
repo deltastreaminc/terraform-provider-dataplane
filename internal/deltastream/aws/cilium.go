@@ -1,7 +1,7 @@
 // Copyright (c) DeltaStream, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package eksdataplane
+package aws
 
 import (
 	"bytes"
@@ -12,14 +12,16 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/deltastreaminc/terraform-provider-deltastream-dataplane/internal/eks_dataplane/helm"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/sethvargo/go-retry"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
+	"github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/helm"
+	"github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/util"
 )
 
 //go:embed assets/cilium-1.15.1.tgz
@@ -28,14 +30,20 @@ var ciliumChart []byte
 //go:embed assets/cilium-values.yaml.tmpl
 var ciliumValuesTemplate string
 
-func InstallCilium(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
-	kubeConfig, diags := GetKubeConfig(ctx, dp, cfg)
+func InstallCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
+	kubeConfig, diags := util.GetKubeConfig(ctx, dp, cfg)
 	d.Append(diags...)
 	if d.HasError() {
 		return
 	}
 
-	clusterName, diags := GetKubeClusterName(ctx, dp)
+	config, diags := dp.ClusterConfigurationData(ctx)
+	d.Append(diags...)
+	if d.HasError() {
+		return
+	}
+
+	clusterName, diags := util.GetKubeClusterName(ctx, dp)
 	d.Append(diags...)
 	if d.HasError() {
 		return
@@ -48,7 +56,9 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeCli
 		return
 	}
 	if err = t.Execute(b, map[string]any{
-		"ClusterName": clusterName,
+		"ClusterName":     clusterName,
+		"EcrAwsAccountId": config.AccountId.ValueString(),
+		"Region":          cfg.Region,
 	}); err != nil {
 		d.AddError("error executing cilium values template", err.Error())
 		return
@@ -87,49 +97,22 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeCli
 	}
 	tflog.Debug(ctx, "nodes are ready")
 
-	return
-}
-
-func DeleteAwsNode(ctx context.Context, dp EKSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
-	nodeRequiresRestart := false
-	awsNodeDS := &appsv1.DaemonSet{}
-	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: "kube-system", Name: "aws-node"}, awsNodeDS); err != nil {
-		if !k8serrors.IsNotFound(err) {
-			d.AddError("error getting aws-node DaemonSet", err.Error())
-			return
-		}
-		tflog.Debug(ctx, "aws-node daemonset not found")
-		awsNodeDS = nil
-	}
-	if awsNodeDS != nil {
-		nodeRequiresRestart = true
-		tflog.Debug(ctx, "deleting aws-node daemonset")
-		if err := kubeClient.Delete(ctx, awsNodeDS); err != nil {
-			d.AddError("error deleting aws-node DaemonSet", err.Error())
-			return
-		}
-	}
-	awsNodeSA := &corev1.ServiceAccount{}
-	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: "kube-system", Name: "aws-node"}, awsNodeSA); err != nil {
-		if !k8serrors.IsNotFound(err) {
-			d.AddError("error getting aws-node DaemonSet", err.Error())
-			return
-		}
-		tflog.Debug(ctx, "aws-node service account not found")
-		awsNodeSA = nil
-	}
-	if awsNodeSA != nil {
-		nodeRequiresRestart = true
-		tflog.Debug(ctx, "deleting aws-node service account")
-		if err := kubeClient.Delete(ctx, awsNodeSA); err != nil {
-			d.AddError("error deleting aws-node DaemonSet", err.Error())
-			return
-		}
+	tflog.Debug(ctx, "restarting kube-system deployments")
+	deployments := appsv1.DeploymentList{}
+	if err := kubeClient.List(ctx, &deployments, client.InNamespace("kube-system")); err != nil {
+		d.AddError("error listing kube-system deployments", err.Error())
+		return
 	}
 
-	if nodeRequiresRestart {
-		if diags := restartNodes(ctx, dp, kubeClient); diags.HasError() {
-			d.Append(diags...)
+	for _, deployment := range deployments.Items {
+		if deployment.Spec.Template.Annotations == nil {
+			deployment.Spec.Template.Annotations = map[string]string{}
+		}
+		deployment.Spec.Template.Annotations["io.deltastream.tf-deltastream/restartedAt"] = time.Now().Format(time.RFC3339)
+		if err := retry.Do(ctx, retry.WithMaxRetries(5, retry.NewExponential(5*time.Second)), func(ctx context.Context) error {
+			return retry.RetryableError(kubeClient.Update(ctx, &deployment))
+		}); err != nil {
+			d.AddError("error updating deployment "+deployment.Name, err.Error())
 			return
 		}
 	}
