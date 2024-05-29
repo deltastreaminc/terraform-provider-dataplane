@@ -1,7 +1,7 @@
 // Copyright (c) DeltaStream, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package eksdataplane
+package aws
 
 import (
 	"context"
@@ -13,10 +13,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 )
 
-func Cleanup(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
+func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
 	clusterCfg, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
 	if d.HasError() {
@@ -91,6 +94,14 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp EKSDataplane, kubeClient cl
 			d.AddError("failed to delete infra services", err.Error())
 			return
 		}
+	}
+
+	// Delete cluster-config secret
+	if _, err := secretsClient.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
+		SecretId: ptr.To(calcDeploymentConfigSecretName(clusterCfg, cfg.Region)),
+	}); err != nil {
+		d.AddError("failed to delete secret", err.Error())
+		return
 	}
 
 	return

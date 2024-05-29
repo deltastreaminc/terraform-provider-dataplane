@@ -1,3 +1,6 @@
+// Copyright (c) DeltaStream, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package helm
 
 // sourced from https://github.com/helm/helm/issues/6910#issuecomment-601277026

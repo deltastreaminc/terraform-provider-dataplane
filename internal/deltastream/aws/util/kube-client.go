@@ -1,7 +1,7 @@
 // Copyright (c) DeltaStream, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package eksdataplane
+package util
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
@@ -23,15 +24,18 @@ import (
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/sethvargo/go-retry"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"sigs.k8s.io/yaml"
+
+	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 )
 
 const eksConfigTemplate = `apiVersion: v1
@@ -64,17 +68,17 @@ users:
         - "--output"
         - "json"`
 
-func GetKubeClusterName(ctx context.Context, dp EKSDataplane) (name string, d diag.Diagnostics) {
+func GetKubeClusterName(ctx context.Context, dp awsconfig.AWSDataplane) (name string, d diag.Diagnostics) {
 	clusterConfigurationData, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
 	if d.HasError() {
 		return
 	}
 
-	return fmt.Sprintf("dp-%s-%s-%s-%d", clusterConfigurationData.InfraId.ValueString(), clusterConfigurationData.Stack.ValueString(), clusterConfigurationData.ResourceId.ValueString(), clusterConfigurationData.ClusterIndex.ValueInt64()), d
+	return fmt.Sprintf("dp-%s-%s-%s-%d", clusterConfigurationData.InfraId.ValueString(), clusterConfigurationData.Stack.ValueString(), clusterConfigurationData.EksResourceId.ValueString(), ptr.Deref(clusterConfigurationData.ClusterIndex.ValueInt64Pointer(), 0)), d
 }
 
-func DescribeKubeCluster(ctx context.Context, dp EKSDataplane, cfg aws.Config) (cluster *types.Cluster, d diag.Diagnostics) {
+func DescribeKubeCluster(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Config) (cluster *types.Cluster, d diag.Diagnostics) {
 	clusterName, diags := GetKubeClusterName(ctx, dp)
 	d.Append(diags...)
 	if d.HasError() {
@@ -96,7 +100,7 @@ func DescribeKubeCluster(ctx context.Context, dp EKSDataplane, cfg aws.Config) (
 	return cluster, d
 }
 
-func GetKubeConfig(ctx context.Context, dp EKSDataplane, cfg aws.Config) (kubeConfig []byte, d diag.Diagnostics) {
+func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Config) (kubeConfig []byte, d diag.Diagnostics) {
 	cluster, diags := DescribeKubeCluster(ctx, dp, cfg)
 	d.Append(diags...)
 	if d.HasError() {
@@ -123,7 +127,7 @@ func GetKubeConfig(ctx context.Context, dp EKSDataplane, cfg aws.Config) (kubeCo
 	return kubeConfigBuf.Bytes(), d
 }
 
-func GetKubeClient(ctx context.Context, cfg aws.Config, dp EKSDataplane) (kubeClient client.Client, d diag.Diagnostics) {
+func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (kubeClient client.Client, d diag.Diagnostics) {
 	kubeconfig, diags := GetKubeConfig(ctx, dp, cfg)
 	d.Append(diags...)
 	if d.HasError() {
@@ -163,7 +167,7 @@ func GetKubeClient(ctx context.Context, cfg aws.Config, dp EKSDataplane) (kubeCl
 	return
 }
 
-func applyManifests(ctx context.Context, kubeClient client.Client, manifestYamlsCombined string) (d diag.Diagnostics) {
+func ApplyManifests(ctx context.Context, kubeClient client.Client, manifestYamlsCombined string) (d diag.Diagnostics) {
 	manifestYamls := strings.Split(manifestYamlsCombined, "\n---\n")
 	for _, manifestYaml := range manifestYamls {
 		u := &unstructured.Unstructured{}
@@ -177,15 +181,45 @@ func applyManifests(ctx context.Context, kubeClient client.Client, manifestYamls
 			"kind": u.GetKind(),
 			"name": u.GetName(),
 		})
-		if err := kubeClient.Update(ctx, u); err != nil {
-			if k8serrors.IsNotFound(err) {
-				if err := kubeClient.Create(ctx, u); err != nil {
-					d.AddError("Failed to create manifest", err.Error())
-					return
+
+		if err := retry.Do(ctx, retry.WithMaxRetries(5, retry.NewExponential(time.Second)), func(ctx context.Context) error {
+			ug := u.DeepCopy()
+			if err := kubeClient.Get(ctx, client.ObjectKeyFromObject(ug), ug); err != nil {
+				if k8serrors.IsNotFound(err) {
+					if err := kubeClient.Create(ctx, u); err != nil {
+						return retry.RetryableError(err)
+					}
+					return nil
 				}
-				continue
+				return retry.RetryableError(err)
 			}
+
+			u.SetResourceVersion(ug.GetResourceVersion())
+			if err := kubeClient.Update(ctx, u); err != nil {
+				return retry.RetryableError(err)
+			}
+			return nil
+		}); err != nil {
+			d.AddError("Failed to create manifest", err.Error())
+			return
 		}
 	}
 	return
+}
+
+func RenderAndApplyTemplate(ctx context.Context, kubeClient client.Client, name string, templateData []byte, data map[string]string) (d diag.Diagnostics) {
+	tflog.Debug(ctx, "rendering manifest template "+name)
+	t, err := template.New(name).Parse(string(templateData))
+	if err != nil {
+		d.AddError("error parsing manifest template "+name, err.Error())
+		return
+	}
+
+	b := bytes.NewBuffer(nil)
+	if err := t.Execute(b, data); err != nil {
+		d.AddError("error render manifest template "+name, err.Error())
+		return
+	}
+
+	return ApplyManifests(ctx, kubeClient, b.String())
 }

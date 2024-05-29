@@ -1,19 +1,22 @@
 // Copyright (c) DeltaStream, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package eksdataplane
+package util
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+
+	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 )
 
-func GetAwsConfig(ctx context.Context, dp EKSDataplane) (cfg aws.Config, d diag.Diagnostics) {
+func GetAwsConfig(ctx context.Context, dp awsconfig.AWSDataplane) (cfg aws.Config, d diag.Diagnostics) {
 	assumeRoleData, diags := dp.AssumeRoleData(ctx)
 	d.Append(diags...)
 	if d.HasError() {
@@ -38,4 +41,12 @@ func GetAwsConfig(ctx context.Context, dp EKSDataplane) (cfg aws.Config, d diag.
 	})
 	cfg.Credentials = creds
 	return cfg, d
+}
+
+func GetARNForCPService(ctx context.Context, cfg aws.Config, cc awsconfig.ClusterConfiguration, service string) string {
+	return fmt.Sprintf("arn:aws:%s:%s:%s", service, cc.DsRegion.ValueString(), cc.DsAccountId.ValueString())
+}
+
+func GetARNForService(ctx context.Context, cfg aws.Config, cc awsconfig.ClusterConfiguration, service string) string {
+	return fmt.Sprintf("arn:aws:%s:%s:%s", service, cfg.Region, cc.AccountId.ValueString())
 }
