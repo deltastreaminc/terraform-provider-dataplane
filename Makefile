@@ -1,5 +1,5 @@
 default: download_assets fmt doc testacc
-	go install .
+	CGO_ENABLED=0 go install -tags containers_image_openpgp .
 
 .PHONY: fmt
 fmt:
@@ -11,7 +11,7 @@ doc:
 
 .PHONY: testacc
 testacc:
-	TF_ACC=1 go test -v ./... -v $(TESTARGS) -timeout 120m
+	CGO_ENABLED=0 TF_ACC=1 go test -tags containers_image_openpgp -v ./... -v $(TESTARGS) -timeout 120m
 
 clean:
 	rm -rf docs
