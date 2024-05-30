@@ -16,7 +16,7 @@ require (
 	github.com/containers/image/v5 v5.30.1
 	github.com/fluxcd/helm-controller/api v0.37.4
 	github.com/fluxcd/image-automation-controller/api v0.37.1
-	github.com/fluxcd/image-reflector-controller/api v0.31.2
+	github.com/fluxcd/image-reflector-controller/api v0.32.0
 	github.com/fluxcd/kustomize-controller/api v1.2.2
 	github.com/fluxcd/notification-controller/api v1.2.4
 	github.com/fluxcd/source-controller/api v1.3.0
