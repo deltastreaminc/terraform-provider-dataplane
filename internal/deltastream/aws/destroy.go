@@ -71,7 +71,7 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 	}
 
 	dataplaneKustomization := &kustomizev1.Kustomization{}
-	if err := kubeClient.Get(ctx, client.ObjectKey{Name: "data-plane", Namespace: "cluster-config"}, istioKustomization); err != nil {
+	if err := kubeClient.Get(ctx, client.ObjectKey{Name: "data-plane", Namespace: "cluster-config"}, dataplaneKustomization); err != nil {
 		if !k8serrors.IsNotFound(err) {
 			d.AddError("failed to get lookup service", err.Error())
 			return
