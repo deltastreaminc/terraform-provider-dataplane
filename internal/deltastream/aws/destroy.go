@@ -5,6 +5,7 @@ package aws
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	karpenterv1beta1 "sigs.k8s.io/karpenter/pkg/apis/v1beta1"
 
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 )
@@ -95,13 +97,17 @@ func suspendKustomization(ctx context.Context, kubeClient client.Client, name st
 }
 
 func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
-	clusterCfg, diags := dp.ClusterConfigurationData(ctx)
-	d.Append(diags...)
+	d.Append(suspendKustomization(ctx, kubeClient, "istio")...)
 	if d.HasError() {
 		return
 	}
 
-	d.Append(suspendKustomization(ctx, kubeClient, "istio")...)
+	d.Append(suspendKustomization(ctx, kubeClient, "istio-api-ingress")...)
+	if d.HasError() {
+		return
+	}
+
+	d.Append(suspendKustomization(ctx, kubeClient, "istio-grafana-ingress")...)
 	if d.HasError() {
 		return
 	}
@@ -126,7 +132,7 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 			continue
 		}
 		if err := retry.Do(ctx, retrylimits, func(ctx context.Context) error {
-			err := kubeClient.Delete(ctx, &svc)
+			err := kubeClient.Delete(ctx, &svc, &client.DeleteOptions{PropagationPolicy: ptr.To(metav1.DeletePropagationForeground)})
 			if err != nil {
 				if k8serrors.IsNotFound(err) {
 					return nil
@@ -151,27 +157,54 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 		return
 	}
 
-	d.Append(deleteKustomization(ctx, kubeClient, "observability-addons")...)
-	if d.HasError() {
+	kustomizations := kustomizev1.KustomizationList{}
+	if err := retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		err := kubeClient.List(ctx, &kustomizations, client.InNamespace("cluster-config"))
+		if err != nil {
+			tflog.Debug(ctx, "failed to list kustomizations "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	}); err != nil {
+		d.AddError("failed to list kustomizations", err.Error())
 		return
 	}
 
-	d.Append(deleteKustomization(ctx, kubeClient, "observability")...)
-	if d.HasError() {
-		return
+	for _, kustomization := range kustomizations.Items {
+		if kustomization.Name == "infra" || kustomization.Name == "cilium" || kustomization.Name == "karpenter" {
+			continue
+		}
+
+		d.Append(deleteKustomization(ctx, kubeClient, kustomization.Name)...)
+		if d.HasError() {
+			return
+		}
 	}
 
-	d.Append(deleteKustomization(ctx, kubeClient, "karpenter-provisioner")...)
-	if d.HasError() {
-		return
-	}
+	nodeClaims := karpenterv1beta1.NodeClaimList{}
+	if err := retry.Do(ctx, retry.WithMaxDuration(time.Minute*20, retry.NewConstant(time.Second*10)), func(ctx context.Context) error {
+		err := kubeClient.List(ctx, &nodeClaims)
+		if err != nil {
+			tflog.Debug(ctx, "failed to list node claims "+err.Error())
+			return retry.RetryableError(err)
+		}
 
-	d.Append(deleteKustomization(ctx, kubeClient, "infra")...)
-	if d.HasError() {
-		return
+		tflog.Debug(ctx, "waiting for node claims to be deleted", map[string]any{"count": len(nodeClaims.Items)})
+		if len(nodeClaims.Items) > 0 {
+			return retry.RetryableError(fmt.Errorf("node claims still exist"))
+		}
+		return nil
+	}); err != nil {
+		d.AddError("failed to list node claims", err.Error())
 	}
 
 	// Delete cluster-config secret
+	clusterCfg, diags := dp.ClusterConfigurationData(ctx)
+	d.Append(diags...)
+	if d.HasError() {
+		return
+	}
+
 	tflog.Debug(ctx, "Delete cluster settings secret")
 	secretsClient := secretsmanager.NewFromConfig(cfg)
 	if _, err := secretsClient.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
