@@ -82,6 +82,12 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// copy images
+	resp.Diagnostics.Append(UpdateRoleTrustPolicies(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	// remove aws-node
 	resp.Diagnostics.Append(DeleteAwsNode(ctx, dp, kubeClient)...)
 	if resp.Diagnostics.HasError() {

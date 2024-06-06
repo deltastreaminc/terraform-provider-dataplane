@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	karpenterv1beta1 "sigs.k8s.io/karpenter/pkg/apis/v1beta1"
 	"sigs.k8s.io/yaml"
 
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
@@ -187,6 +188,7 @@ func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 	_ = notificationv1b3.AddToScheme(scheme)
 	_ = imagereflectv1.AddToScheme(scheme)
 	_ = imageautov1.AddToScheme(scheme)
+	_ = karpenterv1beta1.SchemeBuilder.AddToScheme(scheme)
 
 	kubeClient, err = client.New(restConfig, client.Options{
 		Scheme: scheme,
