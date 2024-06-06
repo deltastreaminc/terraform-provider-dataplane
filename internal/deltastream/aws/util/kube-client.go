@@ -6,14 +6,19 @@ package util
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	helmv2 "github.com/fluxcd/helm-controller/api/v2beta2"
 	imageautov1 "github.com/fluxcd/image-automation-controller/api/v1beta1"
 	imagereflectv1 "github.com/fluxcd/image-reflector-controller/api/v1beta2"
@@ -33,6 +38,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	karpenterv1beta1 "sigs.k8s.io/karpenter/pkg/apis/v1beta1"
 	"sigs.k8s.io/yaml"
 
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
@@ -55,18 +61,40 @@ preferences: {}
 users:
 - name: aws
   user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1beta1
-      command: aws
-      args:
-        - "eks"
-        - "get-token"
-        - "--region"
-        - "{{ .Region }}"
-        - "--cluster-name"
-        - "{{ .ClusterName }}"
-        - "--output"
-        - "json"`
+    token: {{ .Token }}
+`
+
+type customPresignClient struct {
+	client      sts.HTTPPresignerV4
+	clusterName string
+}
+
+func (p *customPresignClient) PresignHTTP(ctx context.Context, credentials aws.Credentials, req *http.Request, payloadHash string, service string, region string, signingTime time.Time, optFns ...func(*v4.SignerOptions)) (url string, signedHeader http.Header, err error) {
+	req.Header.Add("x-k8s-aws-id", p.clusterName)
+	req.Header.Add("X-Amz-Expires", "600")
+	return p.client.PresignHTTP(ctx, credentials, req, payloadHash, service, region, signingTime, optFns...)
+}
+
+func getKubernetesAuthToken(ctx context.Context, cfg aws.Config, k8sClusterName string) (token string, err error) {
+	stsclient := sts.NewPresignClient(sts.NewFromConfig(cfg))
+
+	presignedReq, err := stsclient.PresignGetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}, func(po *sts.PresignOptions) {
+		po.Presigner = &customPresignClient{
+			client:      po.Presigner,
+			clusterName: k8sClusterName,
+		}
+	})
+	if err != nil {
+		return "", fmt.Errorf("unable to initiate presigned caller identity: %w", err)
+	}
+
+	presignedURL, err := url.Parse(presignedReq.URL)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse presigned URL: %w", err)
+	}
+
+	return "k8s-aws-v1." + base64.RawURLEncoding.EncodeToString([]byte(presignedURL.String())), nil
+}
 
 func GetKubeClusterName(ctx context.Context, dp awsconfig.AWSDataplane) (name string, d diag.Diagnostics) {
 	clusterConfigurationData, diags := dp.ClusterConfigurationData(ctx)
@@ -113,12 +141,17 @@ func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Confi
 		return
 	}
 
+	token, err := getKubernetesAuthToken(ctx, cfg, *cluster.Name)
+	if err != nil {
+		d.AddError("Failed to get k8s token", err.Error())
+		return
+	}
+
 	kubeConfigBuf := bytes.NewBuffer(nil)
 	err = t.Execute(kubeConfigBuf, map[string]string{
-		"Endpoint":    *cluster.Endpoint,
-		"CAData":      *cluster.CertificateAuthority.Data,
-		"Region":      cfg.Region,
-		"ClusterName": *cluster.Name,
+		"Endpoint": *cluster.Endpoint,
+		"CAData":   *cluster.CertificateAuthority.Data,
+		"Token":    token,
 	})
 	if err != nil {
 		d.AddError("Failed to generate kubeconfig", err.Error())
@@ -155,6 +188,7 @@ func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 	_ = notificationv1b3.AddToScheme(scheme)
 	_ = imagereflectv1.AddToScheme(scheme)
 	_ = imageautov1.AddToScheme(scheme)
+	_ = karpenterv1beta1.SchemeBuilder.AddToScheme(scheme)
 
 	kubeClient, err = client.New(restConfig, client.Options{
 		Scheme: scheme,

@@ -98,7 +98,8 @@ const deploymentConfigTmpl = `
     },
     "cw2loki": {
       "name": "{{ .O11yBucket }}",
-      "region": "{{ .Region }}"
+      "region": "{{ .Region }}",
+      "bucket_prefix" : "cw2loki"
     }
   },
   "kube": {

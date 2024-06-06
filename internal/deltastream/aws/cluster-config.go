@@ -62,20 +62,6 @@ func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 		return
 	}
 
-	apiServerGatewayName := "istio-svcs-gateway"
-	switch {
-	case config.ApiSubnetMode.ValueString() == "private" && config.ApiTlsMode.ValueString() == "awscert":
-		apiServerGatewayName = "istio-svcs-gateway"
-	case config.ApiSubnetMode.ValueString() == "private" && config.ApiTlsMode.ValueString() == "disabled":
-		apiServerGatewayName = "istio-svcs-gateway"
-	case config.ApiSubnetMode.ValueString() == "public" && config.ApiTlsMode.ValueString() == "awscert":
-		apiServerGatewayName = "istio-svcs-gateway"
-	case config.ApiSubnetMode.ValueString() == "public" && config.ApiTlsMode.ValueString() == "acme":
-		fallthrough
-	default:
-		apiServerGatewayName = "istio-svcs-gateway"
-	}
-
 	clusterConfig := corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "cluster-settings", Namespace: "cluster-config"}}
 	controllerutil.CreateOrUpdate(ctx, kubeClient, &clusterConfig, func() error {
 		clusterConfig.Data = map[string][]byte{
@@ -142,7 +128,6 @@ func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"apiEndpointSubnet":              []byte(config.ApiSubnetMode.ValueString()),
 			"apiTlsTermination":              []byte(config.ApiTlsMode.ValueString()),
 			"clusterNlbSslCertificate":       []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
-			"apiServerDefaultIngressGateway": []byte(apiServerGatewayName),
 			"apiIngressGatewayPrefix":        []byte("istio"), //hardcode
 
 			"grafanaPromPushProxVpcHostname": []byte(config.MetricsUrl.ValueString()),
