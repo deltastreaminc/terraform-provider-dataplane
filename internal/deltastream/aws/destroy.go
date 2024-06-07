@@ -171,7 +171,7 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 	}
 
 	for _, kustomization := range kustomizations.Items {
-		if kustomization.Name == "infra" || kustomization.Name == "cilium" || kustomization.Name == "karpenter" {
+		if kustomization.Name == "infra" || kustomization.Name == "cilium" || kustomization.Name == "cilium-cluster-policies" || kustomization.Name == "karpenter" || kustomization.Name == "kyverno" || kustomization.Name == "kyverno-policies" {
 			continue
 		}
 
@@ -189,13 +189,26 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 			return retry.RetryableError(err)
 		}
 
+		for _, nodeClaim := range nodeClaims.Items {
+			podList := corev1.PodList{}
+			if err := kubeClient.List(ctx, &podList, client.MatchingFields{"spec.nodeName": nodeClaim.Status.NodeName}); err != nil {
+				return retry.RetryableError(fmt.Errorf("failed to list pods on node %s: %w", nodeClaim.Status.NodeName, err))
+			}
+
+			for _, pod := range podList.Items {
+				if err := kubeClient.Delete(ctx, &pod); err != nil {
+					return retry.RetryableError(fmt.Errorf("failed to delete pod %s: %w", pod.Name, err))
+				}
+			}
+		}
+
 		tflog.Debug(ctx, "waiting for node claims to be deleted", map[string]any{"count": len(nodeClaims.Items)})
 		if len(nodeClaims.Items) > 0 {
 			return retry.RetryableError(fmt.Errorf("node claims still exist"))
 		}
 		return nil
 	}); err != nil {
-		d.AddError("failed to list node claims", err.Error())
+		d.AddError("failed while waiting for node claims to be cleaned up", err.Error())
 	}
 
 	// Delete cluster-config secret
