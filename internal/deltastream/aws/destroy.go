@@ -221,7 +221,8 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 	tflog.Debug(ctx, "Delete cluster settings secret")
 	secretsClient := secretsmanager.NewFromConfig(cfg)
 	if _, err := secretsClient.DeleteSecret(ctx, &secretsmanager.DeleteSecretInput{
-		SecretId: ptr.To(calcDeploymentConfigSecretName(clusterCfg, cfg.Region)),
+		SecretId:                   ptr.To(calcDeploymentConfigSecretName(clusterCfg, cfg.Region)),
+		ForceDeleteWithoutRecovery: ptr.To(true),
 	}); err != nil {
 		d.AddError("failed to delete secret", err.Error())
 		return
