@@ -158,9 +158,12 @@ func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Confi
 var kubeClientCache = ttlcache.New[string, client.Client]()
 
 func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (kubeClient client.Client, err error) {
+	kubeClientCache.DeleteExpired()
 	if v := kubeClientCache.Get("kubeClient"); v != nil {
+		tflog.Debug(ctx, "reusing kube client")
 		return v.Value(), nil
 	}
+	tflog.Debug(ctx, "creating new kube client")
 
 	kubeconfig, err := GetKubeConfig(ctx, dp, cfg)
 	if err != nil {
