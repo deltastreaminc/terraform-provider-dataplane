@@ -216,9 +216,9 @@ func UpdateDeploymentConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AW
 		return
 	}
 
-	kubeClusterName, diags := util.GetKubeClusterName(ctx, dp)
-	diags = append(diags, diags...)
-	if diags.HasError() {
+	kubeClusterName, err := util.GetKubeClusterName(ctx, dp)
+	if err != nil {
+		diags.AddError("unable to get kube cluster name", err.Error())
 		return
 	}
 

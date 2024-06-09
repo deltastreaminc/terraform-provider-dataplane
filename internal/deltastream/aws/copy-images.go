@@ -28,7 +28,7 @@ import (
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 )
 
-func CopyImages(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+func copyImages(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
 	if d.HasError() {

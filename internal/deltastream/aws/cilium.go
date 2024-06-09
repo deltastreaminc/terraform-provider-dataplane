@@ -30,10 +30,10 @@ var ciliumChart []byte
 //go:embed assets/cilium-values.yaml.tmpl
 var ciliumValuesTemplate string
 
-func InstallCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
-	kubeConfig, diags := util.GetKubeConfig(ctx, dp, cfg)
-	d.Append(diags...)
-	if d.HasError() {
+func installCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+	kubeConfig, err := util.GetKubeConfig(ctx, dp, cfg)
+	if err != nil {
+		d.AddError("error getting kubeconfig", err.Error())
 		return
 	}
 
@@ -43,9 +43,9 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 		return
 	}
 
-	clusterName, diags := util.GetKubeClusterName(ctx, dp)
-	d.Append(diags...)
-	if d.HasError() {
+	clusterName, err := util.GetKubeClusterName(ctx, dp)
+	if err != nil {
+		d.AddError("error getting cluster name", err.Error())
 		return
 	}
 
@@ -71,6 +71,11 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 
 	tflog.Debug(ctx, "cilium installed, wait for nodes to be ready")
 	err = retry.Do(ctx, retry.WithMaxDuration(time.Minute*5, retry.NewConstant(time.Second*5)), func(ctx context.Context) error {
+		kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+		if err != nil {
+			return retry.RetryableError(err)
+		}
+
 		nodes := corev1.NodeList{}
 		if err = kubeClient.List(ctx, &nodes); err != nil {
 			return retry.RetryableError(err)
@@ -97,6 +102,12 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 	}
 	tflog.Debug(ctx, "nodes are ready")
 
+	kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+	if err != nil {
+		d.AddError("error getting kube client", err.Error())
+		return
+	}
+
 	tflog.Debug(ctx, "restarting kube-system deployments")
 	deployments := appsv1.DeploymentList{}
 	if err := kubeClient.List(ctx, &deployments, client.InNamespace("kube-system")); err != nil {
@@ -109,7 +120,7 @@ func InstallCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 			deployment.Spec.Template.Annotations = map[string]string{}
 		}
 		deployment.Spec.Template.Annotations["io.deltastream.tf-deltastream/restartedAt"] = time.Now().Format(time.RFC3339)
-		if err := retry.Do(ctx, retry.WithMaxRetries(5, retry.NewExponential(5*time.Second)), func(ctx context.Context) error {
+		if err := retry.Do(ctx, retrylimits, func(ctx context.Context) error {
 			return retry.RetryableError(kubeClient.Update(ctx, &deployment))
 		}); err != nil {
 			d.AddError("error updating deployment "+deployment.Name, err.Error())

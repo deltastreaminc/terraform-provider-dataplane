@@ -13,14 +13,19 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 	"github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/util"
 )
 
-func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client, infraVersion string) (d diag.Diagnostics) {
+func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, infraVersion string) (d diag.Diagnostics) {
+	kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+	if err != nil {
+		d.AddError("error getting kube client", err.Error())
+		return
+	}
+
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "cluster-config"}}
 	controllerutil.CreateOrUpdate(ctx, kubeClient, ns, func() error {
 		return nil
@@ -32,9 +37,9 @@ func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 		return
 	}
 
-	cluster, diags := util.DescribeKubeCluster(ctx, dp, cfg)
-	d.Append(diags...)
-	if d.HasError() {
+	cluster, err := util.DescribeKubeCluster(ctx, dp, cfg)
+	if err != nil {
+		d.AddError("error getting cluster", err.Error())
 		return
 	}
 
@@ -124,11 +129,11 @@ func UpdateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"o11yTlsTermination":    []byte(config.O11yTlsMode.ValueString()),
 			"o11yNlbSslCertificate": []byte(ptr.Deref(config.O11yTlsCertificaterArn.ValueStringPointer(), "")),
 
-			"apiHostname":                    []byte(config.ApiHostname.ValueString()),
-			"apiEndpointSubnet":              []byte(config.ApiSubnetMode.ValueString()),
-			"apiTlsTermination":              []byte(config.ApiTlsMode.ValueString()),
-			"clusterNlbSslCertificate":       []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
-			"apiIngressGatewayPrefix":        []byte("istio"), //hardcode
+			"apiHostname":              []byte(config.ApiHostname.ValueString()),
+			"apiEndpointSubnet":        []byte(config.ApiSubnetMode.ValueString()),
+			"apiTlsTermination":        []byte(config.ApiTlsMode.ValueString()),
+			"clusterNlbSslCertificate": []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
+			"apiIngressGatewayPrefix":  []byte("istio"), //hardcode
 
 			"grafanaPromPushProxVpcHostname": []byte(config.MetricsUrl.ValueString()),
 

@@ -26,6 +26,7 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.12.0
 	github.com/hashicorp/terraform-plugin-go v0.22.2
 	github.com/hashicorp/terraform-plugin-log v0.9.0
+	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/sethvargo/go-retry v0.2.4
 	helm.sh/helm/v3 v3.14.4
 	k8s.io/api v0.30.1

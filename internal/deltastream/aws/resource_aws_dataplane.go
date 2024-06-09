@@ -70,44 +70,38 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	kubeClient, diags := util.GetKubeClient(ctx, cfg, dp)
-	resp.Diagnostics.Append(diags...)
+	// copy images
+	resp.Diagnostics.Append(copyImages(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// copy images
-	resp.Diagnostics.Append(CopyImages(ctx, cfg, dp)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// copy images
-	resp.Diagnostics.Append(UpdateRoleTrustPolicies(ctx, cfg, dp)...)
+	resp.Diagnostics.Append(updateRoleTrustPolicies(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// remove aws-node
-	resp.Diagnostics.Append(DeleteAwsNode(ctx, dp, kubeClient)...)
+	resp.Diagnostics.Append(deleteAwsNode(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// install cilium
-	resp.Diagnostics.Append(InstallCilium(ctx, cfg, dp, kubeClient)...)
+	resp.Diagnostics.Append(installCilium(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// update cluster-config
-	resp.Diagnostics.Append(UpdateClusterConfig(ctx, cfg, dp, kubeClient, d.infraVersion)...)
+	resp.Diagnostics.Append(updateClusterConfig(ctx, cfg, dp, d.infraVersion)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// start microservices
-	resp.Diagnostics.Append(InstallDeltaStream(ctx, cfg, dp, kubeClient)...)
+	resp.Diagnostics.Append(installDeltaStream(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -149,13 +143,7 @@ func (d *AWSDataplaneResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	kubeClient, diags := util.GetKubeClient(ctx, cfg, dp)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	resp.Diagnostics.Append(Cleanup(ctx, cfg, dp, kubeClient)...)
+	resp.Diagnostics.Append(cleanup(ctx, cfg, dp)...)
 }
 
 func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -173,26 +161,20 @@ func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	kubeClient, diags := util.GetKubeClient(ctx, cfg, newDp)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
 	// // update cluster-config
-	resp.Diagnostics.Append(UpdateClusterConfig(ctx, cfg, newDp, kubeClient, d.infraVersion)...)
+	resp.Diagnostics.Append(updateClusterConfig(ctx, cfg, newDp, d.infraVersion)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// copy images
-	resp.Diagnostics.Append(CopyImages(ctx, cfg, newDp)...)
+	resp.Diagnostics.Append(copyImages(ctx, cfg, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// start microservices
-	resp.Diagnostics.Append(InstallDeltaStream(ctx, cfg, newDp, kubeClient)...)
+	resp.Diagnostics.Append(installDeltaStream(ctx, cfg, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
