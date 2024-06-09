@@ -178,7 +178,8 @@ func cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d 
 	}
 
 	for _, kustomization := range kustomizations.Items {
-		if kustomization.Name == "infra" || kustomization.Name == "cilium" || kustomization.Name == "cilium-cluster-policies" || kustomization.Name == "karpenter" || kustomization.Name == "kyverno" || kustomization.Name == "kyverno-policies" {
+		switch kustomization.Name {
+		case "infra", "cilium", "cilium-cluster-policies", "karpenter", "kyverno", "kyverno-policies", "aws-load-balancer":
 			continue
 		}
 
