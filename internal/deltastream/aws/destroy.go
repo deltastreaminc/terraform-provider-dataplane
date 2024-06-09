@@ -22,6 +22,7 @@ import (
 	karpenterv1beta1 "sigs.k8s.io/karpenter/pkg/apis/v1beta1"
 
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
+	"github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/util"
 )
 
 var retrylimits = retry.WithMaxRetries(5, retry.NewExponential(time.Second*5))
@@ -96,7 +97,13 @@ func suspendKustomization(ctx context.Context, kubeClient client.Client, name st
 	return d
 }
 
-func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
+func cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+	kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+	if err != nil {
+		d.AddError("error getting kube client", err.Error())
+		return
+	}
+
 	d.Append(suspendKustomization(ctx, kubeClient, "istio")...)
 	if d.HasError() {
 		return
@@ -183,7 +190,12 @@ func Cleanup(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kub
 
 	nodeClaims := karpenterv1beta1.NodeClaimList{}
 	if err := retry.Do(ctx, retry.WithMaxDuration(time.Minute*20, retry.NewConstant(time.Second*10)), func(ctx context.Context) error {
-		err := kubeClient.List(ctx, &nodeClaims)
+		kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+		if err != nil {
+			return retry.RetryableError(err)
+		}
+
+		err = kubeClient.List(ctx, &nodeClaims)
 		if err != nil {
 			tflog.Debug(ctx, "failed to list node claims "+err.Error())
 			return retry.RetryableError(err)

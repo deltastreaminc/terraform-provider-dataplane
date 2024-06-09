@@ -33,10 +33,16 @@ var dataPlaneTemplate []byte
 //go:embed assets/cluster-config/platform.yaml.tmpl
 var platformTemplate []byte
 
-func InstallDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
+func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
 	if d.HasError() {
+		return
+	}
+
+	kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+	if err != nil {
+		d.AddError("error getting kube client", err.Error())
 		return
 	}
 
@@ -83,7 +89,7 @@ func InstallDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDat
 			deployment.Spec.Template.Annotations = map[string]string{}
 		}
 		deployment.Spec.Template.Annotations["io.deltastream.tf-deltastream/restartedAt"] = time.Now().Format(time.RFC3339)
-		if err := retry.Do(ctx, retry.WithMaxRetries(5, retry.NewExponential(5*time.Second)), func(ctx context.Context) error {
+		if err := retry.Do(ctx, retrylimits, func(ctx context.Context) error {
 			return retry.RetryableError(kubeClient.Update(ctx, &deployment))
 		}); err != nil {
 			d.AddError("error updating deployment "+deployment.Name, err.Error())
@@ -91,7 +97,12 @@ func InstallDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDat
 		}
 	}
 
-	err := retry.Do(ctx, retry.WithMaxDuration(time.Minute*30, retry.NewConstant(10*time.Second)), func(ctx context.Context) error {
+	err = retry.Do(ctx, retry.WithMaxDuration(time.Minute*30, retry.NewConstant(10*time.Second)), func(ctx context.Context) error {
+		kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+		if err != nil {
+			return retry.RetryableError(err)
+		}
+
 		kustomizations := kustomizev1.KustomizationList{}
 		if err := kubeClient.List(ctx, &kustomizations, client.InNamespace("cluster-config")); err != nil {
 			return err

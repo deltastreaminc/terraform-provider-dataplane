@@ -29,6 +29,7 @@ import (
 	sourcev1b2 "github.com/fluxcd/source-controller/api/v1beta2"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/sethvargo/go-retry"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -69,6 +70,8 @@ type customPresignClient struct {
 	clusterName string
 }
 
+const cacheTimeout = time.Second * 500 // must be less than X-Amz-Expires
+
 func (p *customPresignClient) PresignHTTP(ctx context.Context, credentials aws.Credentials, req *http.Request, payloadHash string, service string, region string, signingTime time.Time, optFns ...func(*v4.SignerOptions)) (url string, signedHeader http.Header, err error) {
 	req.Header.Add("x-k8s-aws-id", p.clusterName)
 	req.Header.Add("X-Amz-Expires", "600")
@@ -96,55 +99,48 @@ func getKubernetesAuthToken(ctx context.Context, cfg aws.Config, k8sClusterName 
 	return "k8s-aws-v1." + base64.RawURLEncoding.EncodeToString([]byte(presignedURL.String())), nil
 }
 
-func GetKubeClusterName(ctx context.Context, dp awsconfig.AWSDataplane) (name string, d diag.Diagnostics) {
+func GetKubeClusterName(ctx context.Context, dp awsconfig.AWSDataplane) (name string, err error) {
 	clusterConfigurationData, diags := dp.ClusterConfigurationData(ctx)
-	d.Append(diags...)
-	if d.HasError() {
-		return
+	if diags.HasError() {
+		return "", fmt.Errorf("failed to get cluster configuration data: %v", diags.Errors())
 	}
 
-	return fmt.Sprintf("dp-%s-%s-%s-%d", clusterConfigurationData.InfraId.ValueString(), clusterConfigurationData.Stack.ValueString(), clusterConfigurationData.EksResourceId.ValueString(), ptr.Deref(clusterConfigurationData.ClusterIndex.ValueInt64Pointer(), 0)), d
+	return fmt.Sprintf("dp-%s-%s-%s-%d", clusterConfigurationData.InfraId.ValueString(), clusterConfigurationData.Stack.ValueString(), clusterConfigurationData.EksResourceId.ValueString(), ptr.Deref(clusterConfigurationData.ClusterIndex.ValueInt64Pointer(), 0)), nil
 }
 
-func DescribeKubeCluster(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Config) (cluster *types.Cluster, d diag.Diagnostics) {
-	clusterName, diags := GetKubeClusterName(ctx, dp)
-	d.Append(diags...)
-	if d.HasError() {
-		return
+func DescribeKubeCluster(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Config) (cluster *types.Cluster, err error) {
+	clusterName, err := GetKubeClusterName(ctx, dp)
+	if err != nil {
+		return nil, err
 	}
 
 	eksClient := eks.NewFromConfig(cfg)
 	ekcDescOut, err := eksClient.DescribeCluster(ctx, &eks.DescribeClusterInput{Name: aws.String(clusterName)})
 	if err != nil {
-		d.AddError("Failed to describe EKS cluster", err.Error())
-		return
+		return nil, fmt.Errorf("failed to describe EKS cluster: %w", err)
 	}
 
 	cluster = ekcDescOut.Cluster
 	if cluster == nil || cluster.Endpoint == nil || cluster.CertificateAuthority == nil || cluster.CertificateAuthority.Data == nil {
-		d.AddError("Failed to get EKS cluster", "Cluster data is nil")
-		return
+		return nil, fmt.Errorf("failed to get EKS cluster: cluster data is nil")
 	}
-	return cluster, d
+	return cluster, nil
 }
 
-func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Config) (kubeConfig []byte, d diag.Diagnostics) {
-	cluster, diags := DescribeKubeCluster(ctx, dp, cfg)
-	d.Append(diags...)
-	if d.HasError() {
-		return
+func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Config) (kubeConfig []byte, err error) {
+	cluster, err := DescribeKubeCluster(ctx, dp, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	t, err := template.New("eksConfig").Parse(eksConfigTemplate)
 	if err != nil {
-		d.AddError("Failed to parse kubeconfig template", err.Error())
-		return
+		return nil, fmt.Errorf("failed to parse kubeconfig template: %w", err)
 	}
 
 	token, err := getKubernetesAuthToken(ctx, cfg, *cluster.Name)
 	if err != nil {
-		d.AddError("Failed to get k8s token", err.Error())
-		return
+		return nil, fmt.Errorf("failed to get k8s token: %w", err)
 	}
 
 	kubeConfigBuf := bytes.NewBuffer(nil)
@@ -154,29 +150,31 @@ func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Confi
 		"Token":    token,
 	})
 	if err != nil {
-		d.AddError("Failed to generate kubeconfig", err.Error())
-		return
+		return nil, fmt.Errorf("failed to execute kubeconfig template: %w", err)
 	}
-	return kubeConfigBuf.Bytes(), d
+	return kubeConfigBuf.Bytes(), nil
 }
 
-func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (kubeClient client.Client, d diag.Diagnostics) {
-	kubeconfig, diags := GetKubeConfig(ctx, dp, cfg)
-	d.Append(diags...)
-	if d.HasError() {
-		return
+var kubeClientCache = ttlcache.New[string, client.Client]()
+
+func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (kubeClient client.Client, err error) {
+	if v := kubeClientCache.Get("kubeClient"); v != nil {
+		return v.Value(), nil
+	}
+
+	kubeconfig, err := GetKubeConfig(ctx, dp, cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
 	if err != nil {
-		d.AddError("Failed to connect to kube cluster", err.Error())
-		return
+		return nil, fmt.Errorf("failed to create kube client config: %w", err)
 	}
 
 	scheme := runtime.NewScheme()
 	if err = clientgoscheme.AddToScheme(scheme); err != nil {
-		d.AddError("Failed to configure kube client", err.Error())
-		return
+		return nil, fmt.Errorf("failed to add client-go scheme: %w", err)
 	}
 
 	apiextensionsv1.AddToScheme(scheme)
@@ -194,9 +192,10 @@ func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 		Scheme: scheme,
 	})
 	if err != nil {
-		d.AddError("Failed to initialize kube client", err.Error())
-		return
+		return nil, fmt.Errorf("failed to create kube client: %w", err)
 	}
+
+	kubeClientCache.Set("kubeClient", kubeClient, cacheTimeout)
 
 	return
 }

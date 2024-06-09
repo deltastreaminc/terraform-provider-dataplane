@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path/filepath"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -28,9 +29,9 @@ func restartNodes(ctx context.Context, dp awsconfig.AWSDataplane, kubeClient cli
 		return
 	}
 
-	clusterName, diags := util.GetKubeClusterName(ctx, dp)
-	d.Append(diags...)
-	if d.HasError() {
+	clusterName, err := util.GetKubeClusterName(ctx, dp)
+	if err != nil {
+		d.AddError("error getting cluster name", err.Error())
 		return
 	}
 
@@ -77,7 +78,13 @@ func restartNodes(ctx context.Context, dp awsconfig.AWSDataplane, kubeClient cli
 	return
 }
 
-func DeleteAwsNode(ctx context.Context, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
+func deleteAwsNode(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+	kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
+	if err != nil {
+		d.AddError("error getting kube client", err.Error())
+		return
+	}
+
 	nodeRequiresRestart := false
 	awsNodeDS := &appsv1.DaemonSet{}
 	if err := kubeClient.Get(ctx, client.ObjectKey{Namespace: "kube-system", Name: "aws-node"}, awsNodeDS); err != nil {

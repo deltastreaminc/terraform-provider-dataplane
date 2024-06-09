@@ -63,16 +63,16 @@ func updateRoleTrustPolicy(ctx context.Context, cfg aws.Config, clusterConfig aw
 	return
 }
 
-func UpdateRoleTrustPolicies(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+func updateRoleTrustPolicies(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
 	if d.HasError() {
 		return
 	}
 
-	cluster, diags := util.DescribeKubeCluster(ctx, dp, cfg)
-	d.Append(diags...)
-	if d.HasError() {
+	cluster, err := util.DescribeKubeCluster(ctx, dp, cfg)
+	if err != nil {
+		d.AddError("failed to describe EKS cluster", err.Error())
 		return
 	}
 
