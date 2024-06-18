@@ -90,6 +90,9 @@ type ClusterConfiguration struct {
 	KafkaRoleExternalId              basetypes.StringValue `tfsdk:"kafka_role_external_id"`
 	AwsLoadBalancerControllerRoleARN basetypes.StringValue `tfsdk:"aws_load_balancer_controller_role_arn"`
 
+	CustomCredentialsRoleARN basetypes.StringValue `tfsdk:"custom_credentials_role_arn"`
+	CustomCredentialsImage   basetypes.StringValue `tfsdk:"custom_credentials_image"`
+
 	WorkloadCredentialsMode   basetypes.StringValue `tfsdk:"workload_credentials_mode"`
 	WorkloadCredentialsSecret basetypes.StringValue `tfsdk:"workload_credentials_secret"`
 	WorkloadRoleArn           basetypes.StringValue `tfsdk:"workload_role_arn"`
@@ -399,6 +402,16 @@ var Schema = schema.Schema{
 					Description: "The ARN of the TLS certificate for the observability endpoint.",
 					Optional:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+				},
+
+				"custom_credentials_role_arn": schema.StringAttribute{
+					Description: "The ARN of the role to assume for use by the custom credentials plugin.",
+					Optional:    true,
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
+				},
+				"custom_credentials_image": schema.StringAttribute{
+					Description: "The image to use for the custom credentials plugin.",
+					Optional:    true,
 				},
 
 				"api_hostname": schema.StringAttribute{

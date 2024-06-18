@@ -67,6 +67,11 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 		return
 	}
 
+	customCredentialsEnabled := "disabled"
+	if !(config.CustomCredentialsRoleARN.IsNull() || config.CustomCredentialsRoleARN.IsUnknown()) {
+		customCredentialsEnabled = "enabled"
+	}
+
 	clusterConfig := corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "cluster-settings", Namespace: "cluster-config"}}
 	controllerutil.CreateOrUpdate(ctx, kubeClient, &clusterConfig, func() error {
 		clusterConfig.Data = map[string][]byte{
@@ -149,6 +154,9 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"dpOperatorUserAwsSecret":   []byte(ptr.Deref(config.WorkloadCredentialsSecret.ValueStringPointer(), "")),
 			"workloadIamRoleArn":        []byte(ptr.Deref(config.WorkloadRoleArn.ValueStringPointer(), "")),
 			"workloadManagerIamRoleArn": []byte(ptr.Deref(config.WorkloadManagerRoleArn.ValueStringPointer(), "")),
+
+			"customCredentialsRoleARN":      []byte(ptr.Deref(config.CustomCredentialsRoleARN.ValueStringPointer(), "")),
+			"enableCustomCredentialsPlugin": []byte(customCredentialsEnabled),
 		}
 		return nil
 	})
