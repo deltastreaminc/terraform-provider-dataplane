@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
-version: 1
+version: 2
 
 before:
   hooks:
@@ -60,4 +60,4 @@ release:
       name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
 
 changelog:
-  skip: true
+  disable: true
