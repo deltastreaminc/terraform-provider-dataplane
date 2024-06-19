@@ -403,7 +403,7 @@ var Schema = schema.Schema{
 				"o11y_tls_certificate_arn": schema.StringAttribute{
 					Description: "The ARN of the TLS certificate for the observability endpoint.",
 					Optional:    true,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:acm:.*:[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
 				},
 
 				"custom_credentials_role_arn": schema.StringAttribute{
@@ -434,7 +434,7 @@ var Schema = schema.Schema{
 				"api_tls_certificate_arn": schema.StringAttribute{
 					Description: "The ARN of the TLS certificate for the dataplane API endpoint.",
 					Optional:    true,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:acm:.*:[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
 				},
 
 				"kms_key_id": schema.StringAttribute{
