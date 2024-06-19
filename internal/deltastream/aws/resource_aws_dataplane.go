@@ -106,6 +106,12 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// start custom credentials
+	resp.Diagnostics.Append(deployCustomCredentialsContiner(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -173,8 +179,14 @@ func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	// start microservices
+	// update microservices
 	resp.Diagnostics.Append(installDeltaStream(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// update custom credentials
+	resp.Diagnostics.Append(deployCustomCredentialsContiner(ctx, cfg, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
