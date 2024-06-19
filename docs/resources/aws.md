@@ -170,6 +170,8 @@ Optional:
 
 - `api_tls_certificate_arn` (String) The ARN of the TLS certificate for the dataplane API endpoint.
 - `cluster_index` (Number) The index of the cluster (provided by DeltaStream).
+- `custom_credentials_image` (String) The image to use for the custom credentials plugin.
+- `custom_credentials_role_arn` (String) The ARN of the role to assume for use by the custom credentials plugin.
 - `ds_region` (String) The AWS region provided by DeltaStream.
 - `o11y_tls_certificate_arn` (String) The ARN of the TLS certificate for the observability endpoint.
 - `stack` (String) The type of DeltaStream dataplane (default: prod).

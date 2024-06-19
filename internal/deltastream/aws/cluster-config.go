@@ -132,7 +132,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"grafanaHostname":            []byte(config.O11yHostname.ValueString()),
 			"o11yEndpointSubnet":         []byte(config.O11ySubnetMode.ValueString()),
 			"o11yTlsTermination":         []byte(config.O11yTlsMode.ValueString()),
-			"grafanaNlbSslCertificate":   []byte(ptr.Deref(config.O11yTlsCertificateArn.ValueStringPointer(), "")),
+			"grafanaNlbCertificateArn":   []byte(ptr.Deref(config.O11yTlsCertificateArn.ValueStringPointer(), "")),
 			"o11yEndpointSecurityGroups": []byte(ptr.Deref(config.O11yIngressSecurityGroups.ValueStringPointer(), "")),
 
 			"apiHostname":                []byte(config.ApiHostname.ValueString()),
