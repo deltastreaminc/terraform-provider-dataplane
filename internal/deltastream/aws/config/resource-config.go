@@ -98,15 +98,17 @@ type ClusterConfiguration struct {
 	WorkloadRoleArn           basetypes.StringValue `tfsdk:"workload_role_arn"`
 	WorkloadManagerRoleArn    basetypes.StringValue `tfsdk:"workload_manager_role_arn"`
 
-	O11yHostname           basetypes.StringValue `tfsdk:"o11y_hostname"`
-	O11ySubnetMode         basetypes.StringValue `tfsdk:"o11y_subnet_mode"`
-	O11yTlsMode            basetypes.StringValue `tfsdk:"o11y_tls_mode"`
-	O11yTlsCertificaterArn basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
+	O11yHostname              basetypes.StringValue `tfsdk:"o11y_hostname"`
+	O11ySubnetMode            basetypes.StringValue `tfsdk:"o11y_subnet_mode"`
+	O11yTlsMode               basetypes.StringValue `tfsdk:"o11y_tls_mode"`
+	O11yTlsCertificaterArn    basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
+	O11yIngressSecurityGroups basetypes.StringValue `tfsdk:"o11y_ingress_security_groups"`
 
-	ApiHostname           basetypes.StringValue `tfsdk:"api_hostname"`
-	ApiSubnetMode         basetypes.StringValue `tfsdk:"api_subnet_mode"`
-	ApiTlsMode            basetypes.StringValue `tfsdk:"api_tls_mode"`
-	ApiTlsCertificaterArn basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
+	ApiHostname              basetypes.StringValue `tfsdk:"api_hostname"`
+	ApiSubnetMode            basetypes.StringValue `tfsdk:"api_subnet_mode"`
+	ApiTlsMode               basetypes.StringValue `tfsdk:"api_tls_mode"`
+	ApiTlsCertificaterArn    basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
+	ApiIngressSecurityGroups basetypes.StringValue `tfsdk:"api_ingress_security_groups"`
 
 	KmsKeyId          basetypes.StringValue `tfsdk:"kms_key_id"`
 	DynamoDbTableName basetypes.StringValue `tfsdk:"dynamodb_table_name"`

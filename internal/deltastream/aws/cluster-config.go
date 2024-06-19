@@ -129,16 +129,17 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"grafanaIngressMode": []byte("default"), // deprecated
 			"istioIngressMode":   []byte("default"), // deprecated
 
-			"grafanaHostname":       []byte(config.O11yHostname.ValueString()),
-			"o11yEndpointSubnet":    []byte(config.O11ySubnetMode.ValueString()),
-			"o11yTlsTermination":    []byte(config.O11yTlsMode.ValueString()),
-			"o11yNlbSslCertificate": []byte(ptr.Deref(config.O11yTlsCertificaterArn.ValueStringPointer(), "")),
+			"grafanaHostname":            []byte(config.O11yHostname.ValueString()),
+			"o11yEndpointSubnet":         []byte(config.O11ySubnetMode.ValueString()),
+			"o11yTlsTermination":         []byte(config.O11yTlsMode.ValueString()),
+			"o11yNlbSslCertificate":      []byte(ptr.Deref(config.O11yTlsCertificaterArn.ValueStringPointer(), "")),
+			"o11yEndpointSecurityGroups": []byte(ptr.Deref(config.O11yIngressSecurityGroups.ValueStringPointer(), "")),
 
-			"apiHostname":              []byte(config.ApiHostname.ValueString()),
-			"apiEndpointSubnet":        []byte(config.ApiSubnetMode.ValueString()),
-			"apiTlsTermination":        []byte(config.ApiTlsMode.ValueString()),
-			"clusterNlbSslCertificate": []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
-			"apiIngressGatewayPrefix":  []byte("istio"), //hardcode
+			"apiHostname":               []byte(config.ApiHostname.ValueString()),
+			"apiEndpointSubnet":         []byte(config.ApiSubnetMode.ValueString()),
+			"apiTlsTermination":         []byte(config.ApiTlsMode.ValueString()),
+			"clusterNlbSslCertificate":  []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
+			"apiEndpointSecurityGroups": []byte(ptr.Deref(config.ApiIngressSecurityGroups.ValueStringPointer(), "")),
 
 			"grafanaPromPushProxVpcHostname": []byte(config.MetricsUrl.ValueString()),
 
