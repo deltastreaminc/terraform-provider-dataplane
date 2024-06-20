@@ -391,9 +391,9 @@ var Schema = schema.Schema{
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
 				},
 				"o11y_ingress_security_groups": schema.StringAttribute{
-					Description: "The AWS security group name(s) to attached to obervability endpoint load balancer.",
-					Required:    false,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-]+$`), "Invalid o11y ingress security group names")},
+					Description: "Comma separated AWS security group name(s) that will be attached to obervability endpoint load balancer.",
+					Optional:    true,
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-,]+$`), "Invalid o11y ingress security group names")},
 				},
 				"o11y_subnet_mode": schema.StringAttribute{
 					Description: "The subnet mode for observability endpoint.",
@@ -427,9 +427,9 @@ var Schema = schema.Schema{
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
 				},
 				"api_ingress_security_groups": schema.StringAttribute{
-					Description: "The AWS security group name(s) to attached to API endpoint load balancer.",
-					Required:    false,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-]+$`), "Invalid api ingress security group names")},
+					Description: "Comma separated AWS security group name(s) that will be attached to API endpoint load balancer.",
+					Optional:    true,
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-,]+$`), "Invalid api ingress security group names")},
 				},
 				"api_subnet_mode": schema.StringAttribute{
 					Description: "The subnet mode for dataplane API endpoint.",
