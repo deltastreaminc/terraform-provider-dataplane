@@ -5,7 +5,6 @@ package aws
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"strings"
 
@@ -85,7 +84,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"awsAccountID":                     []byte(config.AccountId.ValueString()),
 			"infraID":                          []byte(config.InfraId.ValueString()),
 			"infraName":                        []byte("dp-" + config.InfraId.ValueString()),
-			"resourceID":                       []byte(fmt.Sprintf("\"%s\"", config.EksResourceId.ValueString())),
+			"resourceID":                       []byte(config.EksResourceId.ValueString()),
 			"clusterName":                      []byte(*cluster.Name),
 			"vpcId":                            []byte(config.VpcId.ValueString()),
 			"vpcCidr":                          []byte(config.VpcCidr.ValueString()),
