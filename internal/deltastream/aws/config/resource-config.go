@@ -101,13 +101,13 @@ type ClusterConfiguration struct {
 	O11yHostname              basetypes.StringValue `tfsdk:"o11y_hostname"`
 	O11ySubnetMode            basetypes.StringValue `tfsdk:"o11y_subnet_mode"`
 	O11yTlsMode               basetypes.StringValue `tfsdk:"o11y_tls_mode"`
-	O11yTlsCertificaterArn    basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
+	O11yTlsCertificateArn     basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
 	O11yIngressSecurityGroups basetypes.StringValue `tfsdk:"o11y_ingress_security_groups"`
 
 	ApiHostname              basetypes.StringValue `tfsdk:"api_hostname"`
 	ApiSubnetMode            basetypes.StringValue `tfsdk:"api_subnet_mode"`
 	ApiTlsMode               basetypes.StringValue `tfsdk:"api_tls_mode"`
-	ApiTlsCertificaterArn    basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
+	ApiTlsCertificateArn     basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
 	ApiIngressSecurityGroups basetypes.StringValue `tfsdk:"api_ingress_security_groups"`
 
 	KmsKeyId          basetypes.StringValue `tfsdk:"kms_key_id"`
@@ -403,7 +403,7 @@ var Schema = schema.Schema{
 				"o11y_tls_certificate_arn": schema.StringAttribute{
 					Description: "The ARN of the TLS certificate for the observability endpoint.",
 					Optional:    true,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:acm:.+:[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
 				},
 
 				"custom_credentials_role_arn": schema.StringAttribute{
@@ -434,7 +434,7 @@ var Schema = schema.Schema{
 				"api_tls_certificate_arn": schema.StringAttribute{
 					Description: "The ARN of the TLS certificate for the dataplane API endpoint.",
 					Optional:    true,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:acm:.+:[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
 				},
 
 				"kms_key_id": schema.StringAttribute{

@@ -132,14 +132,14 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"grafanaHostname":            []byte(config.O11yHostname.ValueString()),
 			"o11yEndpointSubnet":         []byte(config.O11ySubnetMode.ValueString()),
 			"o11yTlsTermination":         []byte(config.O11yTlsMode.ValueString()),
-			"o11yNlbSslCertificate":      []byte(ptr.Deref(config.O11yTlsCertificaterArn.ValueStringPointer(), "")),
+			"grafanaNlbCertificateArn":   []byte(ptr.Deref(config.O11yTlsCertificateArn.ValueStringPointer(), "")),
 			"o11yEndpointSecurityGroups": []byte(ptr.Deref(config.O11yIngressSecurityGroups.ValueStringPointer(), "")),
 
-			"apiHostname":               []byte(config.ApiHostname.ValueString()),
-			"apiEndpointSubnet":         []byte(config.ApiSubnetMode.ValueString()),
-			"apiTlsTermination":         []byte(config.ApiTlsMode.ValueString()),
-			"clusterNlbSslCertificate":  []byte(ptr.Deref(config.ApiTlsCertificaterArn.ValueStringPointer(), "")),
-			"apiEndpointSecurityGroups": []byte(ptr.Deref(config.ApiIngressSecurityGroups.ValueStringPointer(), "")),
+			"apiHostname":                []byte(config.ApiHostname.ValueString()),
+			"apiEndpointSubnet":          []byte(config.ApiSubnetMode.ValueString()),
+			"apiTlsTermination":          []byte(config.ApiTlsMode.ValueString()),
+			"apiServerNlbCertificateArn": []byte(ptr.Deref(config.ApiTlsCertificateArn.ValueStringPointer(), "")),
+			"apiEndpointSecurityGroups":  []byte(ptr.Deref(config.ApiIngressSecurityGroups.ValueStringPointer(), "")),
 
 			"grafanaPromPushProxVpcHostname": []byte(config.MetricsUrl.ValueString()),
 
