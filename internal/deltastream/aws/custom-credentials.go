@@ -51,6 +51,7 @@ func deployCustomCredentialsContiner(ctx context.Context, cfg aws.Config, dp aws
 		"AccountID":       clusterConfig.AccountId.ValueString(),
 		"ImageRepository": imgSpl[0],
 		"ImageTag":        imgSpl[1],
+		"ProductVersion":  clusterConfig.ProductVersion.ValueString(),
 	})...)
 	if d.HasError() {
 		return
