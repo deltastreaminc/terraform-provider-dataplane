@@ -168,11 +168,13 @@ Required:
 
 Optional:
 
+- `api_ingress_security_groups` (String) Comma separated AWS security group name(s) that will be attached to API endpoint load balancer.
 - `api_tls_certificate_arn` (String) The ARN of the TLS certificate for the dataplane API endpoint.
 - `cluster_index` (Number) The index of the cluster (provided by DeltaStream).
 - `custom_credentials_image` (String) The image to use for the custom credentials plugin.
 - `custom_credentials_role_arn` (String) The ARN of the role to assume for use by the custom credentials plugin.
 - `ds_region` (String) The AWS region provided by DeltaStream.
+- `o11y_ingress_security_groups` (String) Comma separated AWS security group name(s) that will be attached to obervability endpoint load balancer.
 - `o11y_tls_certificate_arn` (String) The ARN of the TLS certificate for the observability endpoint.
 - `stack` (String) The type of DeltaStream dataplane (default: prod).
 - `workload_credentials_secret` (String) The name of the secret containing workload credentials if running in secret mode.
