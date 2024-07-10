@@ -3,7 +3,7 @@ module github.com/deltastreaminc/terraform-provider-dataplane
 go 1.22.3
 
 require (
-	github.com/alitto/pond v1.8.3
+	github.com/alitto/pond v1.9.1
 	github.com/aws/aws-sdk-go-v2 v1.27.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.11
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.18
