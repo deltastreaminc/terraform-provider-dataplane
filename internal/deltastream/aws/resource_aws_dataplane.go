@@ -106,7 +106,19 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	// start custom credentials
+	// recover any failing microservices
+	resp.Diagnostics.Append(restartFluxReleases(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// // wait for microservices
+	resp.Diagnostics.Append(waitKustomizations(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// // start custom credentials
 	resp.Diagnostics.Append(deployCustomCredentialsContiner(ctx, cfg, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -181,6 +193,18 @@ func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// update microservices
 	resp.Diagnostics.Append(installDeltaStream(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// recover any failing microservices
+	resp.Diagnostics.Append(restartFluxReleases(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// wait for microservices
+	resp.Diagnostics.Append(waitKustomizations(ctx, cfg, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
