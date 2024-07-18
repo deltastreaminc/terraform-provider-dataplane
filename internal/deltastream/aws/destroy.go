@@ -27,7 +27,7 @@ import (
 
 var retrylimits = retry.WithMaxRetries(5, retry.NewExponential(time.Second*5))
 
-func getKustomization(ctx context.Context, kubeClient client.Client, name string) (_ *kustomizev1.Kustomization, d diag.Diagnostics) {
+func getKustomization(ctx context.Context, kubeClient *util.RetryableClient, name string) (_ *kustomizev1.Kustomization, d diag.Diagnostics) {
 	kustomization := &kustomizev1.Kustomization{}
 	if err := retry.Do(ctx, retrylimits, func(ctx context.Context) error {
 		if err := kubeClient.Get(ctx, client.ObjectKey{Name: name, Namespace: "cluster-config"}, kustomization); err != nil {
@@ -46,7 +46,7 @@ func getKustomization(ctx context.Context, kubeClient client.Client, name string
 	return kustomization, d
 }
 
-func deleteKustomization(ctx context.Context, kubeClient client.Client, name string) (d diag.Diagnostics) {
+func deleteKustomization(ctx context.Context, kubeClient *util.RetryableClient, name string) (d diag.Diagnostics) {
 	kustomization, diags := getKustomization(ctx, kubeClient, name)
 	d.Append(diags...)
 	if d.HasError() {
@@ -72,7 +72,7 @@ func deleteKustomization(ctx context.Context, kubeClient client.Client, name str
 	return d
 }
 
-func suspendKustomization(ctx context.Context, kubeClient client.Client, name string) (d diag.Diagnostics) {
+func suspendKustomization(ctx context.Context, kubeClient *util.RetryableClient, name string) (d diag.Diagnostics) {
 	kustomization, diags := getKustomization(ctx, kubeClient, name)
 	d.Append(diags...)
 	if d.HasError() {

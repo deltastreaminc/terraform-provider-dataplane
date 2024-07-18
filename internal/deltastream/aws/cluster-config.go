@@ -27,7 +27,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	}
 
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "cluster-config"}}
-	controllerutil.CreateOrUpdate(ctx, kubeClient, ns, func() error {
+	controllerutil.CreateOrUpdate(ctx, kubeClient.Client, ns, func() error {
 		return nil
 	})
 
@@ -73,7 +73,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	}
 
 	clusterConfig := corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "cluster-settings", Namespace: "cluster-config"}}
-	controllerutil.CreateOrUpdate(ctx, kubeClient, &clusterConfig, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient.Client, &clusterConfig, func() error {
 		clusterConfig.Data = map[string][]byte{
 			"meshID":                           []byte("deltastream"),
 			"stack":                            []byte(config.Stack.ValueString()),
@@ -161,6 +161,10 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 		}
 		return nil
 	})
+	if err != nil {
+		d.AddError("error setup cluster settings", err.Error())
+		return
+	}
 
 	return
 }
