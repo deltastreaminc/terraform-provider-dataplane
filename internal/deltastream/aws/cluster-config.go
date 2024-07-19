@@ -6,6 +6,7 @@ package aws
 import (
 	"context"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -54,18 +55,21 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	if d.HasError() {
 		return
 	}
+	sort.Strings(vpcPrivateSubnets)
 
 	clusterSubnetIds := []string{}
 	d.Append(config.PrivateSubnetIds.ElementsAs(ctx, &clusterSubnetIds, false)...)
 	if d.HasError() {
 		return
 	}
+	sort.Strings(clusterSubnetIds)
 
 	clusterPublicSubnetIDs := []string{}
 	d.Append(config.PublicSubnetIds.ElementsAs(ctx, &clusterPublicSubnetIDs, false)...)
 	if d.HasError() {
 		return
 	}
+	sort.Strings(clusterPublicSubnetIDs)
 
 	customCredentialsEnabled := "disabled"
 	if !(config.CustomCredentialsRoleARN.IsNull() || config.CustomCredentialsRoleARN.IsUnknown()) {
@@ -90,6 +94,9 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"vpcCidr":                          []byte(config.VpcCidr.ValueString()),
 			"vpcPrivateSubnetIDs":              []byte(strings.Join(vpcPrivateSubnets, ",")),
 			"clusterPrivateSubnetIDs":          []byte(strings.Join(clusterSubnetIds, ",")),
+			"clusterPrivateSubnetID1":          []byte(clusterSubnetIds[0]),
+			"clusterPrivateSubnetID2":          []byte(clusterSubnetIds[1]),
+			"clusterPrivateSubnetID3":          []byte(clusterSubnetIds[2]),
 			"clusterPublicSubnetIDs":           []byte(strings.Join(clusterPublicSubnetIDs, ",")),
 			"discoveryRegion":                  []byte(cfg.Region),
 			"apiServerURI":                     []byte(*cluster.Endpoint),

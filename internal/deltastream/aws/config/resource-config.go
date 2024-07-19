@@ -7,6 +7,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -226,6 +227,7 @@ var Schema = schema.Schema{
 					Description: "The private subnet IDs hosting nodes for this cluster.",
 					ElementType: basetypes.StringType{},
 					Required:    true,
+					Validators:  []validator.List{listvalidator.SizeAtLeast(3)},
 				},
 				"public_subnet_ids": schema.ListAttribute{
 					Description: "The public subnet IDs with internet gateway.",
