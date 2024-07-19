@@ -6,6 +6,7 @@ package aws
 import (
 	"context"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -54,18 +55,21 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	if d.HasError() {
 		return
 	}
+	slices.Sort(vpcPrivateSubnets)
 
 	clusterSubnetIds := []string{}
 	d.Append(config.PrivateSubnetIds.ElementsAs(ctx, &clusterSubnetIds, false)...)
 	if d.HasError() {
 		return
 	}
+	slices.Sort(clusterSubnetIds)
 
 	clusterPublicSubnetIDs := []string{}
 	d.Append(config.PublicSubnetIds.ElementsAs(ctx, &clusterPublicSubnetIDs, false)...)
 	if d.HasError() {
 		return
 	}
+	slices.Sort(clusterPublicSubnetIDs)
 
 	customCredentialsEnabled := "disabled"
 	if !(config.CustomCredentialsRoleARN.IsNull() || config.CustomCredentialsRoleARN.IsUnknown()) {
