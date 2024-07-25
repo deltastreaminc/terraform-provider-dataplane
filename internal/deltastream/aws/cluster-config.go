@@ -143,6 +143,8 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"o11yEndpointSecurityGroups": []byte(ptr.Deref(config.O11yIngressSecurityGroups.ValueStringPointer(), "")),
 
 			"apiHostname":                []byte(config.ApiHostname.ValueString()),
+			"consoleHostname":            []byte(config.ConsoleHostname.ValueString()),
+			"platformVersion":            []byte(config.ProductVersion.ValueString()),
 			"apiEndpointSubnet":          []byte(config.ApiSubnetMode.ValueString()),
 			"apiTlsTermination":          []byte(config.ApiTlsMode.ValueString()),
 			"apiServerNlbCertificateArn": []byte(ptr.Deref(config.ApiTlsCertificateArn.ValueStringPointer(), "")),
