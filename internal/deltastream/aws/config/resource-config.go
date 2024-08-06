@@ -124,7 +124,8 @@ type ClusterConfiguration struct {
 	ControlPlaneKafkaHosts         basetypes.ListValue `tfsdk:"cp_kafka_hosts"`
 	ControlPlaneKafkaListenerPorts basetypes.ListValue `tfsdk:"cp_kafka_listener_ports"`
 
-	ConsoleHostname basetypes.StringValue `tfsdk:"console_hostname"`
+	ConsoleHostname  basetypes.StringValue `tfsdk:"console_hostname"`
+	RdsCACertsSecret basetypes.StringValue `tfsdk:"rds_ca_certs_secret"`
 }
 
 func (d *AWSDataplane) AssumeRoleData(ctx context.Context) (AssumeRole, diag.Diagnostics) {
@@ -497,6 +498,11 @@ var Schema = schema.Schema{
 					Description: "The hostname of the DeltaStream console",
 					Required:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
+				},
+
+				"rds_ca_certs_secret": schema.StringAttribute{
+					Description: "The secret id in AWS secrets manager holding RDS instance AWS CA certificates",
+					Required:    true,
 				},
 			},
 		},
