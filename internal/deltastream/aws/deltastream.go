@@ -33,9 +33,6 @@ var dataPlaneTemplate []byte
 //go:embed assets/cluster-config/platform.yaml.tmpl
 var platformTemplate []byte
 
-//go:embed assets/flux-system/custom-credentials.yaml.tmpl
-var customCredentialsTemplate []byte
-
 func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)

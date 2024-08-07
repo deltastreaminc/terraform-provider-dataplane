@@ -20,7 +20,7 @@ import (
 	"github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/util"
 )
 
-//go:embed assets/custom-credentials.yaml
+//go:embed assets/custom-credentials.yaml.tmpl
 var customCredentialKustomization []byte
 
 func deployCustomCredentialsContiner(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
@@ -51,6 +51,7 @@ func deployCustomCredentialsContiner(ctx context.Context, cfg aws.Config, dp aws
 		"AccountID":       clusterConfig.AccountId.ValueString(),
 		"ImageRepository": imgSpl[0],
 		"ImageTag":        imgSpl[1],
+		"ProductVersion":  clusterConfig.ProductVersion.ValueString(),
 	})...)
 	if d.HasError() {
 		return
