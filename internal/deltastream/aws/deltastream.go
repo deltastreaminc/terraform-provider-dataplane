@@ -69,15 +69,6 @@ func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDat
 		return
 	}
 
-	d.Append(util.RenderAndApplyTemplate(ctx, kubeClient, "custom credential", customCredentialsTemplate, map[string]string{
-		"Region":         cfg.Region,
-		"AccountID":      clusterConfig.AccountId.ValueString(),
-		"ProductVersion": clusterConfig.ProductVersion.ValueString(),
-	})...)
-	if d.HasError() {
-		return
-	}
-
 	d.Append(util.RenderAndApplyTemplate(ctx, kubeClient, "data plane", dataPlaneTemplate, map[string]string{
 		"Region":         cfg.Region,
 		"AccountID":      clusterConfig.AccountId.ValueString(),
