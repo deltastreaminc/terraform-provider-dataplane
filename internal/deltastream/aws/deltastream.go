@@ -33,6 +33,9 @@ var dataPlaneTemplate []byte
 //go:embed assets/cluster-config/platform.yaml.tmpl
 var platformTemplate []byte
 
+//go:embed assets/flux-system/custom-credentials.yaml.tmpl
+var customCredentialsTemplate []byte
+
 func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
@@ -61,6 +64,15 @@ func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDat
 	}
 
 	d.Append(util.RenderAndApplyTemplate(ctx, kubeClient, "platform", platformTemplate, map[string]string{
+		"Region":         cfg.Region,
+		"AccountID":      clusterConfig.AccountId.ValueString(),
+		"ProductVersion": clusterConfig.ProductVersion.ValueString(),
+	})...)
+	if d.HasError() {
+		return
+	}
+
+	d.Append(util.RenderAndApplyTemplate(ctx, kubeClient, "custom credential", customCredentialsTemplate, map[string]string{
 		"Region":         cfg.Region,
 		"AccountID":      clusterConfig.AccountId.ValueString(),
 		"ProductVersion": clusterConfig.ProductVersion.ValueString(),
