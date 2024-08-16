@@ -79,7 +79,7 @@ resource "dataplane_aws" "deltastream" {
     workload_role_arn         = "arn:aws:iam::123456789012:role/workload-iam-role"
     workload_manager_role_arn = "arn:aws:iam::123456789012:role/workload-manager-iam-role"
     rds_ca_certs_secret       = "deltastream/rds/ca/rds-certs-bundle"
-    apply_user_timestamp             = "first_retry"
+    apply_user_timestamp      = "<timstamp_from_caller>"
   }
 }
 ```
