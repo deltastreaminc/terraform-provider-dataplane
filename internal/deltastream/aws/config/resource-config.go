@@ -126,7 +126,8 @@ type ClusterConfiguration struct {
 
 	ConsoleHostname  basetypes.StringValue `tfsdk:"console_hostname"`
 	RdsCACertsSecret basetypes.StringValue `tfsdk:"rds_ca_certs_secret"`
-	RetryInstall basetypes.StringValue `tfsdk:"retry_install"`
+
+	ApplyUserTimestamp basetypes.StringValue `tfsdk:"apply_user_timestamp"`
 }
 
 func (d *AWSDataplane) AssumeRoleData(ctx context.Context) (AssumeRole, diag.Diagnostics) {
@@ -505,8 +506,8 @@ var Schema = schema.Schema{
 					Description: "The secret id in AWS secrets manager holding RDS instance AWS CA certificates",
 					Required:    true,
 				},
-				"retry_install": schema.StringAttribute{
-					Description: "Debug: put any string into retry_install so DS provider can re-trigger the install process, change string to retry again",
+				"apply_user_timestamp": schema.StringAttribute{
+					Description: "Debug: add timestamp provider by user",
 					Required:    false,
 				},
 			},

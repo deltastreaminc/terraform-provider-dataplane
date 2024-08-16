@@ -168,6 +168,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"customCredentialsRoleARN":      []byte(ptr.Deref(config.CustomCredentialsRoleARN.ValueStringPointer(), "")),
 			"enableCustomCredentialsPlugin": []byte(customCredentialsEnabled),
 			"rdsCACertsSecret":              []byte(config.RdsCACertsSecret.ValueString()),
+			"applyUserTimestamp":            []byte(config.ApplyUserTimestamp.ValueString()),
 		}
 		return nil
 	})
