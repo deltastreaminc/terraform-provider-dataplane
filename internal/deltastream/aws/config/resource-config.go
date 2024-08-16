@@ -507,7 +507,7 @@ var Schema = schema.Schema{
 					Required:    true,
 				},
 				"apply_user_timestamp": schema.StringAttribute{
-					Description: "Debug: add timestamp provider by user",
+					Description: "Debug: apply timestamp provided by caller.",
 					Required:    false,
 				},
 			},
