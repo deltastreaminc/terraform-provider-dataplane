@@ -507,7 +507,7 @@ var Schema = schema.Schema{
 					Required:    true,
 				},
 				"installation_timestamp": schema.StringAttribute{
-					Description: "Installation imestamp provided by caller.",
+					Description: "Installation timestamp provided by caller.",
 					Required:    true,
 				},
 			},
