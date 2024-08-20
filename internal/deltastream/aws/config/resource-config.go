@@ -127,7 +127,7 @@ type ClusterConfiguration struct {
 	ConsoleHostname  basetypes.StringValue `tfsdk:"console_hostname"`
 	RdsCACertsSecret basetypes.StringValue `tfsdk:"rds_ca_certs_secret"`
 
-	ApplyUserTimestamp basetypes.StringValue `tfsdk:"apply_user_timestamp"`
+	InstallationTimestamp basetypes.StringValue `tfsdk:"installation_timestamp"`
 }
 
 func (d *AWSDataplane) AssumeRoleData(ctx context.Context) (AssumeRole, diag.Diagnostics) {
@@ -506,9 +506,9 @@ var Schema = schema.Schema{
 					Description: "The secret id in AWS secrets manager holding RDS instance AWS CA certificates",
 					Required:    true,
 				},
-				"apply_user_timestamp": schema.StringAttribute{
-					Description: "Debug: apply timestamp provided by caller.",
-					Required:    false,
+				"installation_timestamp": schema.StringAttribute{
+					Description: "Installation imestamp provided by caller.",
+					Required:    true,
 				},
 			},
 		},
