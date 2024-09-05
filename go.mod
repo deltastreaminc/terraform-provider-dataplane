@@ -173,7 +173,6 @@ require (
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.1 // indirect
@@ -271,5 +270,7 @@ require (
 
 // lock for helm.sh/helm/v3
 replace github.com/docker/docker => github.com/docker/docker v27.2.0+incompatible
+
+replace oras.land/oras-go => oras.land/oras-go v1.2.5
 
 replace github.com/docker/docker-credential-helpers => github.com/docker/docker-credential-helpers v0.7.0
