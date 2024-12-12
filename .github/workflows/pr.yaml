@@ -1,0 +1,40 @@
+name: PR test
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+
+jobs:
+  build:
+    name: pr-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          # Allow goreleaser to access older tag information.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Setup Flux CLI
+        uses: fluxcd/flux2/action@main
+        with:
+          version: 'latest'
+
+      - name: Install gpgme # dep of github.com/containers/image/v5/signature
+        run: sudo apt-get install -y libgpgme-dev
+
+      - name: Run GoReleaser check
+        uses: goreleaser/goreleaser-action@286f3b13b1b49da4ac219696163fb8c1c93e1200 # v6.0.0
+        with:
+          args: check --verbose
+
+      - name: Build
+        run: make

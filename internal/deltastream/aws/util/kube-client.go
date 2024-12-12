@@ -35,6 +35,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/ptr"
@@ -155,9 +156,9 @@ func GetKubeConfig(ctx context.Context, dp awsconfig.AWSDataplane, cfg aws.Confi
 	return kubeConfigBuf.Bytes(), nil
 }
 
-var kubeClientCache = ttlcache.New[string, client.Client]()
+var kubeClientCache = ttlcache.New[string, *RetryableClient]()
 
-func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (kubeClient client.Client, err error) {
+func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (rClient *RetryableClient, err error) {
 	kubeClientCache.DeleteExpired()
 	if v := kubeClientCache.Get("kubeClient"); v != nil {
 		tflog.Debug(ctx, "reusing kube client")
@@ -191,19 +192,20 @@ func GetKubeClient(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 	_ = imageautov1.AddToScheme(scheme)
 	_ = karpenterv1beta1.SchemeBuilder.AddToScheme(scheme)
 
-	kubeClient, err = client.New(restConfig, client.Options{
+	kubeClient, err := client.New(restConfig, client.Options{
 		Scheme: scheme,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kube client: %w", err)
 	}
+	rClient = &RetryableClient{Client: kubeClient}
 
-	kubeClientCache.Set("kubeClient", kubeClient, cacheTimeout)
+	kubeClientCache.Set("kubeClient", rClient, cacheTimeout)
 
 	return
 }
 
-func ApplyManifests(ctx context.Context, kubeClient client.Client, manifestYamlsCombined string) (d diag.Diagnostics) {
+func ApplyManifests(ctx context.Context, kubeClient *RetryableClient, manifestYamlsCombined string) (d diag.Diagnostics) {
 	manifestYamls := strings.Split(manifestYamlsCombined, "\n---\n")
 	for _, manifestYaml := range manifestYamls {
 		u := &unstructured.Unstructured{}
@@ -243,7 +245,7 @@ func ApplyManifests(ctx context.Context, kubeClient client.Client, manifestYamls
 	return
 }
 
-func RenderAndApplyTemplate(ctx context.Context, kubeClient client.Client, name string, templateData []byte, data map[string]string) (d diag.Diagnostics) {
+func RenderAndApplyTemplate(ctx context.Context, kubeClient *RetryableClient, name string, templateData []byte, data map[string]string) (d diag.Diagnostics) {
 	tflog.Debug(ctx, "rendering manifest template "+name)
 	t, err := template.New(name).Parse(string(templateData))
 	if err != nil {
@@ -259,3 +261,97 @@ func RenderAndApplyTemplate(ctx context.Context, kubeClient client.Client, name 
 
 	return ApplyManifests(ctx, kubeClient, b.String())
 }
+
+type RetryableClient struct {
+	Client client.Client
+}
+
+var retrylimits = retry.WithMaxRetries(20, retry.NewConstant(time.Second*20))
+
+func (r *RetryableClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.Create(ctx, obj, opts...); err != nil {
+			if k8serrors.IsAlreadyExists(err) {
+				return err
+			}
+			tflog.Debug(ctx, "create error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+func (r *RetryableClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.Delete(ctx, obj, opts...); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return err
+			}
+			tflog.Debug(ctx, "delete error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+func (r *RetryableClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.DeleteAllOf(ctx, obj, opts...); err != nil {
+			tflog.Debug(ctx, "delete all error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+func (r *RetryableClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.Patch(ctx, obj, patch, opts...); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return err
+			}
+			tflog.Debug(ctx, "patch error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+func (r *RetryableClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.Update(ctx, obj, opts...); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return err
+			}
+			tflog.Debug(ctx, "update error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+func (r *RetryableClient) Get(ctx context.Context, key k8stypes.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.Get(ctx, key, obj, opts...); err != nil {
+			if k8serrors.IsNotFound(err) {
+				return err
+			}
+			tflog.Debug(ctx, "get error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+func (r *RetryableClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return retry.Do(ctx, retrylimits, func(ctx context.Context) error {
+		if err := r.Client.List(ctx, list, opts...); err != nil {
+			tflog.Debug(ctx, "list error "+err.Error())
+			return retry.RetryableError(err)
+		}
+		return nil
+	})
+}
+
+var _ client.Reader = &RetryableClient{}
+var _ client.Writer = &RetryableClient{}

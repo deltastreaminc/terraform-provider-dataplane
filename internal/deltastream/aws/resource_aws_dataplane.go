@@ -106,6 +106,24 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	// recover any failing microservices
+	resp.Diagnostics.Append(restartFluxReleases(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// // wait for microservices
+	resp.Diagnostics.Append(waitKustomizations(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// // start custom credentials
+	resp.Diagnostics.Append(deployCustomCredentialsContiner(ctx, cfg, dp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -173,8 +191,26 @@ func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	// start microservices
+	// update microservices
 	resp.Diagnostics.Append(installDeltaStream(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// recover any failing microservices
+	resp.Diagnostics.Append(restartFluxReleases(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// wait for microservices
+	resp.Diagnostics.Append(waitKustomizations(ctx, cfg, newDp)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// update custom credentials
+	resp.Diagnostics.Append(deployCustomCredentialsContiner(ctx, cfg, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}

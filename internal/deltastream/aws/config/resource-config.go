@@ -7,6 +7,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -90,20 +91,25 @@ type ClusterConfiguration struct {
 	KafkaRoleExternalId              basetypes.StringValue `tfsdk:"kafka_role_external_id"`
 	AwsLoadBalancerControllerRoleARN basetypes.StringValue `tfsdk:"aws_load_balancer_controller_role_arn"`
 
+	CustomCredentialsRoleARN basetypes.StringValue `tfsdk:"custom_credentials_role_arn"`
+	CustomCredentialsImage   basetypes.StringValue `tfsdk:"custom_credentials_image"`
+
 	WorkloadCredentialsMode   basetypes.StringValue `tfsdk:"workload_credentials_mode"`
 	WorkloadCredentialsSecret basetypes.StringValue `tfsdk:"workload_credentials_secret"`
 	WorkloadRoleArn           basetypes.StringValue `tfsdk:"workload_role_arn"`
 	WorkloadManagerRoleArn    basetypes.StringValue `tfsdk:"workload_manager_role_arn"`
 
-	O11yHostname           basetypes.StringValue `tfsdk:"o11y_hostname"`
-	O11ySubnetMode         basetypes.StringValue `tfsdk:"o11y_subnet_mode"`
-	O11yTlsMode            basetypes.StringValue `tfsdk:"o11y_tls_mode"`
-	O11yTlsCertificaterArn basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
+	O11yHostname              basetypes.StringValue `tfsdk:"o11y_hostname"`
+	O11ySubnetMode            basetypes.StringValue `tfsdk:"o11y_subnet_mode"`
+	O11yTlsMode               basetypes.StringValue `tfsdk:"o11y_tls_mode"`
+	O11yTlsCertificateArn     basetypes.StringValue `tfsdk:"o11y_tls_certificate_arn"`
+	O11yIngressSecurityGroups basetypes.StringValue `tfsdk:"o11y_ingress_security_groups"`
 
-	ApiHostname           basetypes.StringValue `tfsdk:"api_hostname"`
-	ApiSubnetMode         basetypes.StringValue `tfsdk:"api_subnet_mode"`
-	ApiTlsMode            basetypes.StringValue `tfsdk:"api_tls_mode"`
-	ApiTlsCertificaterArn basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
+	ApiHostname              basetypes.StringValue `tfsdk:"api_hostname"`
+	ApiSubnetMode            basetypes.StringValue `tfsdk:"api_subnet_mode"`
+	ApiTlsMode               basetypes.StringValue `tfsdk:"api_tls_mode"`
+	ApiTlsCertificateArn     basetypes.StringValue `tfsdk:"api_tls_certificate_arn"`
+	ApiIngressSecurityGroups basetypes.StringValue `tfsdk:"api_ingress_security_groups"`
 
 	KmsKeyId          basetypes.StringValue `tfsdk:"kms_key_id"`
 	DynamoDbTableName basetypes.StringValue `tfsdk:"dynamodb_table_name"`
@@ -118,7 +124,10 @@ type ClusterConfiguration struct {
 	ControlPlaneKafkaHosts         basetypes.ListValue `tfsdk:"cp_kafka_hosts"`
 	ControlPlaneKafkaListenerPorts basetypes.ListValue `tfsdk:"cp_kafka_listener_ports"`
 
-	ConsoleHostname basetypes.StringValue `tfsdk:"console_hostname"`
+	ConsoleHostname  basetypes.StringValue `tfsdk:"console_hostname"`
+	RdsCACertsSecret basetypes.StringValue `tfsdk:"rds_ca_certs_secret"`
+
+	InstallationTimestamp basetypes.StringValue `tfsdk:"installation_timestamp"`
 }
 
 func (d *AWSDataplane) AssumeRoleData(ctx context.Context) (AssumeRole, diag.Diagnostics) {
@@ -221,6 +230,7 @@ var Schema = schema.Schema{
 					Description: "The private subnet IDs hosting nodes for this cluster.",
 					ElementType: basetypes.StringType{},
 					Required:    true,
+					Validators:  []validator.List{listvalidator.SizeAtLeast(3)},
 				},
 				"public_subnet_ids": schema.ListAttribute{
 					Description: "The public subnet IDs with internet gateway.",
@@ -385,6 +395,11 @@ var Schema = schema.Schema{
 					Required:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
 				},
+				"o11y_ingress_security_groups": schema.StringAttribute{
+					Description: "Comma separated AWS security group name(s) that will be attached to obervability endpoint load balancer.",
+					Optional:    true,
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-,]+$`), "Invalid o11y ingress security group names")},
+				},
 				"o11y_subnet_mode": schema.StringAttribute{
 					Description: "The subnet mode for observability endpoint.",
 					Required:    true,
@@ -398,13 +413,28 @@ var Schema = schema.Schema{
 				"o11y_tls_certificate_arn": schema.StringAttribute{
 					Description: "The ARN of the TLS certificate for the observability endpoint.",
 					Optional:    true,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:acm:.+:[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+				},
+
+				"custom_credentials_role_arn": schema.StringAttribute{
+					Description: "The ARN of the role to assume for use by the custom credentials plugin.",
+					Optional:    true,
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
+				},
+				"custom_credentials_image": schema.StringAttribute{
+					Description: "The image to use for the custom credentials plugin.",
+					Optional:    true,
 				},
 
 				"api_hostname": schema.StringAttribute{
 					Description: "The hostname of the dataplane API endpoint.",
 					Required:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
+				},
+				"api_ingress_security_groups": schema.StringAttribute{
+					Description: "Comma separated AWS security group name(s) that will be attached to API endpoint load balancer.",
+					Optional:    true,
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-,]+$`), "Invalid api ingress security group names")},
 				},
 				"api_subnet_mode": schema.StringAttribute{
 					Description: "The subnet mode for dataplane API endpoint.",
@@ -419,7 +449,7 @@ var Schema = schema.Schema{
 				"api_tls_certificate_arn": schema.StringAttribute{
 					Description: "The ARN of the TLS certificate for the dataplane API endpoint.",
 					Optional:    true,
-					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
+					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:acm:.+:[0-9]{12}:certificate/.+$`), "Invalid Certificate ARN")},
 				},
 
 				"kms_key_id": schema.StringAttribute{
@@ -470,6 +500,15 @@ var Schema = schema.Schema{
 					Description: "The hostname of the DeltaStream console",
 					Required:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
+				},
+
+				"rds_ca_certs_secret": schema.StringAttribute{
+					Description: "The secret id in AWS secrets manager holding RDS instance AWS CA certificates",
+					Required:    true,
+				},
+				"installation_timestamp": schema.StringAttribute{
+					Description: "Installation timestamp provided by caller.",
+					Required:    true,
 				},
 			},
 		},

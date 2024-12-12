@@ -1,4 +1,4 @@
-default: download_assets fmt doc testacc
+default: download_assets fmt testacc
 	CGO_ENABLED=0 go install -tags containers_image_openpgp .
 
 .PHONY: fmt
