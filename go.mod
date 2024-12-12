@@ -18,7 +18,7 @@ require (
 	github.com/fluxcd/helm-controller/api v0.37.4
 	github.com/fluxcd/image-automation-controller/api v0.37.1
 	github.com/fluxcd/image-reflector-controller/api v0.31.2
-	github.com/fluxcd/kustomize-controller/api v1.2.2
+	github.com/fluxcd/kustomize-controller/api v1.3.0
 	github.com/fluxcd/notification-controller/api v1.2.4
 	github.com/fluxcd/source-controller/api v1.3.0
 	github.com/hashicorp/terraform-plugin-docs v0.19.3
@@ -99,7 +99,7 @@ require (
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.3.0 // indirect
-	github.com/fluxcd/pkg/apis/kustomize v1.3.0 // indirect
+	github.com/fluxcd/pkg/apis/kustomize v1.5.0 // indirect
 	github.com/fluxcd/pkg/apis/meta v1.5.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
