@@ -97,7 +97,11 @@ func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDat
 		}
 	}
 
-	err = retry.Do(ctx, retry.WithMaxDuration(time.Minute*30, retry.NewConstant(10*time.Second)), func(ctx context.Context) error {
+	return
+}
+
+func waitKustomizations(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+	err := retry.Do(ctx, retry.WithMaxDuration(time.Minute*30, retry.NewConstant(10*time.Second)), func(ctx context.Context) error {
 		kubeClient, err := util.GetKubeClient(ctx, cfg, dp)
 		if err != nil {
 			return retry.RetryableError(err)
@@ -129,8 +133,6 @@ func installDeltaStream(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDat
 	})
 	if err != nil {
 		d.AddError("timeout waiting for services to start", err.Error())
-		return
 	}
-
 	return
 }

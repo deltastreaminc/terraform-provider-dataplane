@@ -7,6 +7,7 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -123,7 +124,10 @@ type ClusterConfiguration struct {
 	ControlPlaneKafkaHosts         basetypes.ListValue `tfsdk:"cp_kafka_hosts"`
 	ControlPlaneKafkaListenerPorts basetypes.ListValue `tfsdk:"cp_kafka_listener_ports"`
 
-	ConsoleHostname basetypes.StringValue `tfsdk:"console_hostname"`
+	ConsoleHostname  basetypes.StringValue `tfsdk:"console_hostname"`
+	RdsCACertsSecret basetypes.StringValue `tfsdk:"rds_ca_certs_secret"`
+
+	InstallationTimestamp basetypes.StringValue `tfsdk:"installation_timestamp"`
 }
 
 func (d *AWSDataplane) AssumeRoleData(ctx context.Context) (AssumeRole, diag.Diagnostics) {
@@ -226,6 +230,7 @@ var Schema = schema.Schema{
 					Description: "The private subnet IDs hosting nodes for this cluster.",
 					ElementType: basetypes.StringType{},
 					Required:    true,
+					Validators:  []validator.List{listvalidator.SizeAtLeast(3)},
 				},
 				"public_subnet_ids": schema.ListAttribute{
 					Description: "The public subnet IDs with internet gateway.",
@@ -495,6 +500,15 @@ var Schema = schema.Schema{
 					Description: "The hostname of the DeltaStream console",
 					Required:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^[a-zA-Z0-9-\.]+\.[a-zA-Z]{2,}$`), "Invalid hostname")},
+				},
+
+				"rds_ca_certs_secret": schema.StringAttribute{
+					Description: "The secret id in AWS secrets manager holding RDS instance AWS CA certificates",
+					Required:    true,
+				},
+				"installation_timestamp": schema.StringAttribute{
+					Description: "Installation timestamp provided by caller.",
+					Required:    true,
 				},
 			},
 		},

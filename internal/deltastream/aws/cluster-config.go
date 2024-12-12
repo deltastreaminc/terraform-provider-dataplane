@@ -6,6 +6,7 @@ package aws
 import (
 	"context"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -27,7 +28,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	}
 
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: "cluster-config"}}
-	controllerutil.CreateOrUpdate(ctx, kubeClient, ns, func() error {
+	controllerutil.CreateOrUpdate(ctx, kubeClient.Client, ns, func() error {
 		return nil
 	})
 
@@ -54,18 +55,21 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	if d.HasError() {
 		return
 	}
+	sort.Strings(vpcPrivateSubnets)
 
 	clusterSubnetIds := []string{}
 	d.Append(config.PrivateSubnetIds.ElementsAs(ctx, &clusterSubnetIds, false)...)
 	if d.HasError() {
 		return
 	}
+	sort.Strings(clusterSubnetIds)
 
 	clusterPublicSubnetIDs := []string{}
 	d.Append(config.PublicSubnetIds.ElementsAs(ctx, &clusterPublicSubnetIDs, false)...)
 	if d.HasError() {
 		return
 	}
+	sort.Strings(clusterPublicSubnetIDs)
 
 	customCredentialsEnabled := "disabled"
 	if !(config.CustomCredentialsRoleARN.IsNull() || config.CustomCredentialsRoleARN.IsUnknown()) {
@@ -73,7 +77,7 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 	}
 
 	clusterConfig := corev1.Secret{ObjectMeta: v1.ObjectMeta{Name: "cluster-settings", Namespace: "cluster-config"}}
-	controllerutil.CreateOrUpdate(ctx, kubeClient, &clusterConfig, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, kubeClient.Client, &clusterConfig, func() error {
 		clusterConfig.Data = map[string][]byte{
 			"meshID":                           []byte("deltastream"),
 			"stack":                            []byte(config.Stack.ValueString()),
@@ -90,6 +94,9 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"vpcCidr":                          []byte(config.VpcCidr.ValueString()),
 			"vpcPrivateSubnetIDs":              []byte(strings.Join(vpcPrivateSubnets, ",")),
 			"clusterPrivateSubnetIDs":          []byte(strings.Join(clusterSubnetIds, ",")),
+			"clusterPrivateSubnetID1":          []byte(clusterSubnetIds[0]),
+			"clusterPrivateSubnetID2":          []byte(clusterSubnetIds[1]),
+			"clusterPrivateSubnetID3":          []byte(clusterSubnetIds[2]),
 			"clusterPublicSubnetIDs":           []byte(strings.Join(clusterPublicSubnetIDs, ",")),
 			"discoveryRegion":                  []byte(cfg.Region),
 			"apiServerURI":                     []byte(*cluster.Endpoint),
@@ -136,6 +143,8 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 			"o11yEndpointSecurityGroups": []byte(ptr.Deref(config.O11yIngressSecurityGroups.ValueStringPointer(), "")),
 
 			"apiHostname":                []byte(config.ApiHostname.ValueString()),
+			"consoleHostname":            []byte(config.ConsoleHostname.ValueString()),
+			"platformVersion":            []byte(config.ProductVersion.ValueString()),
 			"apiEndpointSubnet":          []byte(config.ApiSubnetMode.ValueString()),
 			"apiTlsTermination":          []byte(config.ApiTlsMode.ValueString()),
 			"apiServerNlbCertificateArn": []byte(ptr.Deref(config.ApiTlsCertificateArn.ValueStringPointer(), "")),
@@ -158,9 +167,15 @@ func updateClusterConfig(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDa
 
 			"customCredentialsRoleARN":      []byte(ptr.Deref(config.CustomCredentialsRoleARN.ValueStringPointer(), "")),
 			"enableCustomCredentialsPlugin": []byte(customCredentialsEnabled),
+			"rdsCACertsSecret":              []byte(config.RdsCACertsSecret.ValueString()),
+			"installationTimestamp":         []byte(config.InstallationTimestamp.ValueString()),
 		}
 		return nil
 	})
+	if err != nil {
+		d.AddError("error setup cluster settings", err.Error())
+		return
+	}
 
 	return
 }

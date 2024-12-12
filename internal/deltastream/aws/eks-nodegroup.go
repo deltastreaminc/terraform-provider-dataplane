@@ -22,7 +22,7 @@ import (
 	"github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/util"
 )
 
-func restartNodes(ctx context.Context, dp awsconfig.AWSDataplane, kubeClient client.Client) (d diag.Diagnostics) {
+func restartNodes(ctx context.Context, dp awsconfig.AWSDataplane, kubeClient *util.RetryableClient) (d diag.Diagnostics) {
 	cfg, diags := util.GetAwsConfig(ctx, dp)
 	d.Append(diags...)
 	if d.HasError() {

@@ -120,9 +120,7 @@ func installCilium(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplan
 			deployment.Spec.Template.Annotations = map[string]string{}
 		}
 		deployment.Spec.Template.Annotations["io.deltastream.tf-deltastream/restartedAt"] = time.Now().Format(time.RFC3339)
-		if err := retry.Do(ctx, retrylimits, func(ctx context.Context) error {
-			return retry.RetryableError(kubeClient.Update(ctx, &deployment))
-		}); err != nil {
+		if err := retry.RetryableError(kubeClient.Update(ctx, &deployment)); err != nil {
 			d.AddError("error updating deployment "+deployment.Name, err.Error())
 			return
 		}

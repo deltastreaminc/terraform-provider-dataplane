@@ -78,6 +78,8 @@ resource "dataplane_aws" "deltastream" {
     workload_credentials_mode = "iamrole"
     workload_role_arn         = "arn:aws:iam::123456789012:role/workload-iam-role"
     workload_manager_role_arn = "arn:aws:iam::123456789012:role/workload-manager-iam-role"
+    rds_ca_certs_secret       = "deltastream/rds/ca/rds-certs-bundle"
+    installation_timestamp    = "timestamp()"
   }
 }
 ```
@@ -150,6 +152,8 @@ Required:
 - `product_artifacts_bucket` (String) The S3 bucket for storing DeltaStream product artifacts.
 - `product_version` (String) The version of the DeltaStream product. (provided by DeltaStream)
 - `public_subnet_ids` (List of String) The public subnet IDs with internet gateway.
+- `rds_ca_certs_secret` (String) secret id that stores RDS ca certificates added as base64 json value for each region with json key formatted as rds-certs-{region}-bundle-pem (AWS link containing regional CA certificates: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesDownload)
+- `installation_timestamp` (String) installation timestamp provided by caller.
 - `rds_resource_id` (String) The resource ID of the RDS instance for storing DeltaStream data.
 - `serde_bucket` (String) The S3 bucket for storing SERDE artifacts.
 - `store_proxy_role_arn` (String) The ARN of the role to assume to facilitate connection to customer stores.
