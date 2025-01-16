@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/alitto/pond"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	ecrtypes "github.com/aws/aws-sdk-go-v2/service/ecr/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/containers/image/v5/copy"
 	"github.com/containers/image/v5/docker"
@@ -23,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/sethvargo/go-retry"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
@@ -107,6 +110,32 @@ func copyImages(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) 
 	for image := range imageMap {
 		sourceImage := fmt.Sprintf("//%s.dkr.ecr.%s.amazonaws.com/%s", clusterConfig.DsAccountId.ValueString(), cfg.Region, image)
 		destImage := fmt.Sprintf("//%s.dkr.ecr.%s.amazonaws.com/%s", clusterConfig.AccountId.ValueString(), cfg.Region, image)
+
+		destRepository := strings.Split(image, ":")[0]
+		// check if image exist in destination account, if not then create it
+		_, err := client.DescribeRepositories(ctx, &ecr.DescribeRepositoriesInput{
+			RepositoryNames: []string{destRepository},
+		})
+		if err != nil {
+			var notFound *ecrtypes.RepositoryNotFoundException
+			if !errors.As(err, &notFound) {
+				d.AddError(fmt.Sprintf("error copying image, unable to describe repository %s in destination registry", destRepository), err.Error())
+				return
+			} else {
+				_, err = client.CreateRepository(ctx, &ecr.CreateRepositoryInput{
+					RepositoryName:     ptr.To(destRepository),
+					ImageTagMutability: ecrtypes.ImageTagMutabilityMutable,
+					Tags: []ecrtypes.Tag{
+						{Key: ptr.To("managed-by"),
+							Value: ptr.To("deltastream.io"),
+						}},
+				})
+				if err != nil {
+					d.AddError(fmt.Sprintf("error copying image, unable to create repository %s in destination registry", destRepository), err.Error())
+					return
+				}
+			}
+		}
 
 		group.Submit(func() {
 			err = copyImage(ctx, imageCredContext, sourceImage, destImage)
