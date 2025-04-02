@@ -28,7 +28,7 @@ import (
 	awsconfig "github.com/deltastreaminc/terraform-provider-dataplane/internal/deltastream/aws/config"
 )
 
-func copyImages(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
+func copyImagesAndExecutionJarFiles(ctx context.Context, cfg aws.Config, skipEcrImageCopy bool, dp awsconfig.AWSDataplane) (d diag.Diagnostics) {
 	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	d.Append(diags...)
 	if d.HasError() {
@@ -70,6 +70,45 @@ func copyImages(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) 
 	}
 	if err := yaml.Unmarshal(b, &imageList); err != nil {
 		d.AddError("error unmarshalling image list", err.Error())
+		return
+	}
+
+	execEngineUri := fmt.Sprintf("release/io/deltastream/execution-engine/%s/execution-engine-%s.jar", imageList.ExecEngineVersion, imageList.ExecEngineVersion)
+	// Copy the execution engine jar
+	tflog.Debug(ctx, "downloading execution engine jar "+bucketName+" "+execEngineUri)
+	getObjectOut, err = s3client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(execEngineUri),
+	})
+	if err != nil {
+		d.AddError("error downloading execution engine jar", err.Error())
+		return
+	}
+	defer getObjectOut.Body.Close()
+	b, err = io.ReadAll(getObjectOut.Body)
+	if err != nil {
+		d.AddError("error reading execution engine jar", err.Error())
+		return
+	}
+
+	tflog.Debug(ctx, "uploading execution engine jar", map[string]any{
+		"bucket": clusterConfig.ProductArtifactsBucket.ValueString(),
+		"uri":    execEngineUri,
+		"size":   len(b),
+	})
+	uploadS3Client := s3.NewFromConfig(cfg)
+	// Upload the execution engine jar to the new bucket
+	_, err = uploadS3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(clusterConfig.ProductArtifactsBucket.ValueString()),
+		Key:    aws.String(execEngineUri),
+		Body:   bytes.NewBuffer(b),
+	})
+	if err != nil {
+		d.AddError("error uploading execution engine jar", err.Error())
+		return
+	}
+
+	if skipEcrImageCopy {
 		return
 	}
 
@@ -118,41 +157,6 @@ func copyImages(ctx context.Context, cfg aws.Config, dp awsconfig.AWSDataplane) 
 	}
 
 	group.Wait()
-
-	execEngineUri := fmt.Sprintf("release/io/deltastream/execution-engine/%s/execution-engine-%s.jar", imageList.ExecEngineVersion, imageList.ExecEngineVersion)
-	// Copy the execution engine jar
-	tflog.Debug(ctx, "downloading execution engine jar "+bucketName+" "+execEngineUri)
-	getObjectOut, err = s3client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(execEngineUri),
-	})
-	if err != nil {
-		d.AddError("error downloading execution engine jar", err.Error())
-		return
-	}
-	defer getObjectOut.Body.Close()
-	b, err = io.ReadAll(getObjectOut.Body)
-	if err != nil {
-		d.AddError("error reading execution engine jar", err.Error())
-		return
-	}
-
-	tflog.Debug(ctx, "uploading execution engine jar", map[string]any{
-		"bucket": clusterConfig.ProductArtifactsBucket.ValueString(),
-		"uri":    execEngineUri,
-		"size":   len(b),
-	})
-	uploadS3Client := s3.NewFromConfig(cfg)
-	// Upload the execution engine jar to the new bucket
-	_, err = uploadS3Client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(clusterConfig.ProductArtifactsBucket.ValueString()),
-		Key:    aws.String(execEngineUri),
-		Body:   bytes.NewBuffer(b),
-	})
-	if err != nil {
-		d.AddError("error uploading execution engine jar", err.Error())
-		return
-	}
 
 	return
 }
