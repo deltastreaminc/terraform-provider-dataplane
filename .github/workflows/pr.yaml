@@ -18,6 +18,14 @@ jobs:
           # Allow goreleaser to access older tag information.
           fetch-depth: 0
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Verify Terraform installation
+        run: terraform version
+
       - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version-file: 'go.mod'
