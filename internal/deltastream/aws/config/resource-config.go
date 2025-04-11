@@ -84,6 +84,7 @@ type ClusterConfiguration struct {
 	StoreProxyRoleArn                basetypes.StringValue `tfsdk:"store_proxy_role_arn"`
 	Cw2LokiRoleArn                   basetypes.StringValue `tfsdk:"cw2loki_role_arn"`
 	EcrReadonlyRoleArn               basetypes.StringValue `tfsdk:"ecr_readonly_role_arn"`
+	EcrBypassCopyImages              basetypes.BoolValue   `tfsdk:"ecr_bypass_copy_images"`
 	DsCrossAccountRoleArn            basetypes.StringValue `tfsdk:"ds_cross_account_role_arn"`
 	DpManagerCpRoleArn               basetypes.StringValue `tfsdk:"dp_manager_cp_role_arn"`
 	DpManagerRoleArn                 basetypes.StringValue `tfsdk:"dp_manager_role_arn"`
@@ -340,6 +341,10 @@ var Schema = schema.Schema{
 					Description: "The ARN of the role to assume for read-only access to ECR.",
 					Required:    true,
 					Validators:  []validator.String{stringvalidator.RegexMatches(regexp.MustCompile(`^arn:aws:iam::[0-9]{12}:role/.+$`), "Invalid Role ARN")},
+				},
+				"ecr_bypass_copy_images": schema.BoolAttribute{
+					Description: "Flag to bypass ecr copy of images from DeltaStream ECRs to new dataplane.",
+					Optional:    true,
 				},
 				"ds_cross_account_role_arn": schema.StringAttribute{
 					Description: "The ARN of the role for provising trust when accessing customer provided resources.",

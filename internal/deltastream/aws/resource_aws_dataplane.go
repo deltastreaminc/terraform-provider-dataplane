@@ -69,9 +69,12 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
+
+	skipCopyImages := !clusterConfig.EcrBypassCopyImages.IsNull() && clusterConfig.EcrBypassCopyImages.ValueBool()
 
 	// copy images
-	resp.Diagnostics.Append(copyImages(ctx, cfg, dp)...)
+	resp.Diagnostics.Append(copyImagesAndExecutionJarFiles(ctx, cfg, skipCopyImages, dp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -124,7 +127,6 @@ func (d *AWSDataplaneResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	clusterConfig, diags := dp.ClusterConfigurationData(ctx)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -184,9 +186,12 @@ func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	clusterConfig, diags := newDp.ClusterConfigurationData(ctx)
+
+	skipCopyImages := !clusterConfig.EcrBypassCopyImages.IsNull() && clusterConfig.EcrBypassCopyImages.ValueBool()
 
 	// copy images
-	resp.Diagnostics.Append(copyImages(ctx, cfg, newDp)...)
+	resp.Diagnostics.Append(copyImagesAndExecutionJarFiles(ctx, cfg, skipCopyImages, newDp)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -215,7 +220,6 @@ func (d *AWSDataplaneResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	clusterConfig, diags := newDp.ClusterConfigurationData(ctx)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
